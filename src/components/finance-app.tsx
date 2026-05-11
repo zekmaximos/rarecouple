@@ -1,6 +1,16 @@
 "use client";
 
-import { categories, money, paymentMethods, signedAmount, Transaction, TransactionType } from "@/lib/finance";
+import {
+  Asset,
+  categories,
+  FinancialGoal,
+  GroceryItem,
+  money,
+  paymentMethods,
+  signedAmount,
+  Transaction,
+  TransactionType,
+} from "@/lib/finance";
 import { createClient } from "@/lib/supabase/client";
 import {
   ArrowDownToLine,
@@ -12,12 +22,15 @@ import {
   LineChart as LineChartIcon,
   Loader2,
   LogOut,
+  Package,
   PiggyBank,
   Plus,
   RefreshCcw,
   ShieldCheck,
   Sparkles,
   TrendingUp,
+  ShoppingBasket,
+  Target,
   Wallet,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -52,7 +65,7 @@ type Props = {
   setupMissing?: boolean;
 };
 
-type Tab = "overview" | "entry" | "analysis" | "security";
+type Tab = "overview" | "entry" | "analysis" | "goals" | "assets" | "groceries" | "security";
 
 const today = new Date().toISOString().slice(0, 10);
 const palette = ["#d96b9d", "#2f9f90", "#d69b35", "#5f6fb2", "#cb6b55", "#668c45", "#8a5f9f"];
@@ -79,16 +92,50 @@ const initialQuickForm = {
   payment_method: "Pix",
 };
 
+const initialGoalForm = {
+  owner_label: "Coletiva",
+  title: "",
+  target_amount: "",
+  current_amount: "",
+  monthly_action: "",
+  target_date: "",
+};
+
+const initialAssetForm = {
+  name: "",
+  asset_type: "Outro",
+  estimated_value: "",
+  acquisition_value: "",
+  acquired_on: "",
+  notes: "",
+};
+
+const initialGroceryForm = {
+  purchased_on: today,
+  item_name: "",
+  category: "Alimentos",
+  amount: "",
+  quantity: "1",
+  store: "",
+  notes: "",
+};
+
 export function FinanceApp({ userEmail, setupMissing = false }: Props) {
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [couple, setCouple] = useState<Couple | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [goals, setGoals] = useState<FinancialGoal[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [groceryItems, setGroceryItems] = useState<GroceryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [form, setForm] = useState(initialForm);
   const [quickForm, setQuickForm] = useState(initialQuickForm);
+  const [goalForm, setGoalForm] = useState(initialGoalForm);
+  const [assetForm, setAssetForm] = useState(initialAssetForm);
+  const [groceryForm, setGroceryForm] = useState(initialGroceryForm);
 
   const totals = useMemo(() => {
     const income = sum(transactions.filter((item) => item.transaction_type === "income"));
@@ -192,6 +239,44 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
     ];
   }, [byCategory, totals]);
 
+  const goalSummary = useMemo(() => {
+    const target = goals.reduce((total, item) => total + Number(item.target_amount), 0);
+    const current = goals.reduce((total, item) => total + Number(item.current_amount), 0);
+    const progress = target ? Math.round((current / target) * 100) : 0;
+    return { target, current, progress };
+  }, [goals]);
+
+  const assetSummary = useMemo(() => {
+    const total = assets.reduce((acc, item) => acc + Number(item.estimated_value), 0);
+    const byType = assets.reduce<Record<string, number>>((acc, item) => {
+      acc[item.asset_type] = (acc[item.asset_type] ?? 0) + Number(item.estimated_value);
+      return acc;
+    }, {});
+
+    return {
+      total,
+      byType: Object.entries(byType).map(([name, value]) => ({ name, value })),
+    };
+  }, [assets]);
+
+  const grocerySummary = useMemo(() => {
+    const month = today.slice(0, 7);
+    const monthItems = groceryItems.filter((item) => item.purchased_on.slice(0, 7) === month);
+    const total = monthItems.reduce((acc, item) => acc + Number(item.amount), 0);
+    const byCategory = monthItems.reduce<Record<string, number>>((acc, item) => {
+      acc[item.category] = (acc[item.category] ?? 0) + Number(item.amount);
+      return acc;
+    }, {});
+
+    return {
+      total,
+      items: monthItems,
+      byCategory: Object.entries(byCategory)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value),
+    };
+  }, [groceryItems]);
+
   async function loadData() {
     if (!supabase || setupMissing) {
       setLoading(false);
@@ -256,17 +341,41 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
       : memberships[0].couples;
     setCouple(selectedCouple as Couple);
 
-    const { data, error } = await supabase
-      .from("transactions")
-      .select("*")
-      .eq("couple_id", memberships[0].couple_id)
-      .order("occurred_on", { ascending: false })
-      .order("created_at", { ascending: false });
+    const coupleId = memberships[0].couple_id;
+    const [transactionResult, goalResult, assetResult, groceryResult] = await Promise.all([
+      supabase
+        .from("transactions")
+        .select("*")
+        .eq("couple_id", coupleId)
+        .order("occurred_on", { ascending: false })
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("financial_goals")
+        .select("*")
+        .eq("couple_id", coupleId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("assets")
+        .select("*")
+        .eq("couple_id", coupleId)
+        .order("estimated_value", { ascending: false }),
+      supabase
+        .from("grocery_items")
+        .select("*")
+        .eq("couple_id", coupleId)
+        .order("purchased_on", { ascending: false })
+        .order("created_at", { ascending: false }),
+    ]);
 
-    if (error) {
-      setMessage(error.message);
+    const firstError = transactionResult.error ?? goalResult.error ?? assetResult.error ?? groceryResult.error;
+
+    if (firstError) {
+      setMessage(`${firstError.message}. Execute a migration 002 no Supabase se as tabelas ainda nao existirem.`);
     } else {
-      setTransactions((data ?? []) as Transaction[]);
+      setTransactions((transactionResult.data ?? []) as Transaction[]);
+      setGoals((goalResult.data ?? []) as FinancialGoal[]);
+      setAssets((assetResult.data ?? []) as Asset[]);
+      setGroceryItems((groceryResult.data ?? []) as GroceryItem[]);
     }
 
     setLoading(false);
@@ -278,6 +387,23 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!supabase || !couple) return;
+
+    const channel = supabase
+      .channel(`rarecouple-${couple.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions", filter: `couple_id=eq.${couple.id}` }, () => void loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "financial_goals", filter: `couple_id=eq.${couple.id}` }, () => void loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "assets", filter: `couple_id=eq.${couple.id}` }, () => void loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "grocery_items", filter: `couple_id=eq.${couple.id}` }, () => void loadData())
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [couple?.id]);
 
   async function saveTransaction(values: typeof initialForm, reset: () => void) {
     if (!supabase || !couple) return;
@@ -333,6 +459,106 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
       },
       () => setQuickForm(initialQuickForm),
     );
+  }
+
+  async function saveGoal() {
+    if (!supabase || !couple) return;
+    const target = Number(goalForm.target_amount.replace(",", "."));
+    const current = Number(goalForm.current_amount.replace(",", ".")) || 0;
+
+    if (!goalForm.title.trim() || !target || target <= 0) {
+      setMessage("Informe nome da meta e valor alvo maior que zero.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("financial_goals").insert({
+      couple_id: couple.id,
+      created_by: user?.id,
+      owner_label: goalForm.owner_label,
+      title: goalForm.title.trim(),
+      target_amount: target,
+      current_amount: current,
+      monthly_action: goalForm.monthly_action || null,
+      target_date: goalForm.target_date || null,
+    });
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setGoalForm(initialGoalForm);
+      await loadData();
+    }
+    setSaving(false);
+  }
+
+  async function saveAsset() {
+    if (!supabase || !couple) return;
+    const estimated = Number(assetForm.estimated_value.replace(",", "."));
+    const acquisition = Number(assetForm.acquisition_value.replace(",", "."));
+
+    if (!assetForm.name.trim() || Number.isNaN(estimated) || estimated < 0) {
+      setMessage("Informe o bem e seu valor real estimado.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("assets").insert({
+      couple_id: couple.id,
+      created_by: user?.id,
+      name: assetForm.name.trim(),
+      asset_type: assetForm.asset_type,
+      estimated_value: estimated,
+      acquisition_value: assetForm.acquisition_value ? acquisition : null,
+      acquired_on: assetForm.acquired_on || null,
+      notes: assetForm.notes || null,
+    });
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setAssetForm(initialAssetForm);
+      await loadData();
+    }
+    setSaving(false);
+  }
+
+  async function saveGroceryItem() {
+    if (!supabase || !couple) return;
+    const amount = Number(groceryForm.amount.replace(",", "."));
+    const quantity = Number(groceryForm.quantity.replace(",", ".")) || 1;
+
+    if (!groceryForm.item_name.trim() || !amount || amount <= 0) {
+      setMessage("Informe o alimento/item e o valor gasto.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("grocery_items").insert({
+      couple_id: couple.id,
+      created_by: user?.id,
+      purchased_on: groceryForm.purchased_on,
+      item_name: groceryForm.item_name.trim(),
+      category: groceryForm.category,
+      amount,
+      quantity,
+      store: groceryForm.store || null,
+      notes: groceryForm.notes || null,
+    });
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setGroceryForm(initialGroceryForm);
+      await loadData();
+    }
+    setSaving(false);
   }
 
   async function signOut() {
@@ -427,6 +653,9 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
           <TabButton active={activeTab === "overview"} onClick={() => setActiveTab("overview")} label="Visao geral" icon={<BarChart3 size={17} />} />
           <TabButton active={activeTab === "entry"} onClick={() => setActiveTab("entry")} label="Lancar" icon={<Plus size={17} />} />
           <TabButton active={activeTab === "analysis"} onClick={() => setActiveTab("analysis")} label="Analises" icon={<Sparkles size={17} />} />
+          <TabButton active={activeTab === "goals"} onClick={() => setActiveTab("goals")} label="Metas" icon={<Target size={17} />} />
+          <TabButton active={activeTab === "assets"} onClick={() => setActiveTab("assets")} label="Bens" icon={<Package size={17} />} />
+          <TabButton active={activeTab === "groceries"} onClick={() => setActiveTab("groceries")} label="Feira" icon={<ShoppingBasket size={17} />} />
           <TabButton active={activeTab === "security"} onClick={() => setActiveTab("security")} label="Seguranca" icon={<ShieldCheck size={17} />} />
         </nav>
 
@@ -549,6 +778,100 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
                 <Decision title="Mes" text={`Se a projecao passar de ${money(totals.income)}, revisem despesas variaveis antes das fixas.`} />
               </div>
             </Panel>
+          </div>
+        ) : null}
+
+        {activeTab === "goals" ? (
+          <div className="mt-4 grid gap-5 lg:grid-cols-[390px_minmax(0,1fr)]">
+            <GoalForm goalForm={goalForm} setGoalForm={setGoalForm} saving={saving} onSave={saveGoal} />
+            <div className="grid content-start gap-5">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Metric title="Guardado" value={money(goalSummary.current)} icon={<PiggyBank size={18} />} />
+                <Metric title="Alvo total" value={money(goalSummary.target)} icon={<Target size={18} />} />
+                <Metric title="Progresso" value={`${goalSummary.progress}%`} icon={<TrendingUp size={18} />} />
+              </div>
+              <Panel title="Metas coletivas e individuais" icon={<Target size={18} />}>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {goals.map((goal) => (
+                    <GoalCard key={goal.id} goal={goal} />
+                  ))}
+                  {!goals.length ? <EmptyState text="Nenhuma meta ainda. Comecem por uma coletiva pequena e clara." /> : null}
+                </div>
+              </Panel>
+            </div>
+          </div>
+        ) : null}
+
+        {activeTab === "assets" ? (
+          <div className="mt-4 grid gap-5 lg:grid-cols-[390px_minmax(0,1fr)]">
+            <AssetForm assetForm={assetForm} setAssetForm={setAssetForm} saving={saving} onSave={saveAsset} />
+            <div className="grid content-start gap-5">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Metric title="Patrimonio listado" value={money(assetSummary.total)} icon={<Package size={18} />} />
+                <Metric title="Itens cadastrados" value={String(assets.length)} icon={<Sparkles size={18} />} />
+              </div>
+              <Panel title="Bens por tipo" icon={<BarChart3 size={18} />}>
+                <ChartFrame>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={assetSummary.byType}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ead7dd" />
+                      <XAxis dataKey="name" stroke="#7a6a70" />
+                      <YAxis stroke="#7a6a70" width={68} tickFormatter={(value) => compactMoney(Number(value))} />
+                      <Tooltip formatter={(value) => money(Number(value))} />
+                      <Bar dataKey="value" fill="#2f9f90" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartFrame>
+              </Panel>
+              <Panel title="Lista de bens" icon={<Package size={18} />}>
+                <SimpleList
+                  items={assets.map((asset) => ({
+                    id: asset.id,
+                    title: asset.name,
+                    detail: `${asset.asset_type}${asset.notes ? ` · ${asset.notes}` : ""}`,
+                    value: money(Number(asset.estimated_value)),
+                  }))}
+                  empty="Cadastre bens como carro, equipamentos, reservas, joias ou outros itens de valor."
+                />
+              </Panel>
+            </div>
+          </div>
+        ) : null}
+
+        {activeTab === "groceries" ? (
+          <div className="mt-4 grid gap-5 lg:grid-cols-[390px_minmax(0,1fr)]">
+            <GroceryForm groceryForm={groceryForm} setGroceryForm={setGroceryForm} saving={saving} onSave={saveGroceryItem} />
+            <div className="grid content-start gap-5">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Metric title="Feira do mes" value={money(grocerySummary.total)} icon={<ShoppingBasket size={18} />} />
+                <Metric title="Itens do mes" value={String(grocerySummary.items.length)} icon={<Package size={18} />} />
+                <Metric title="Media por item" value={money(grocerySummary.items.length ? grocerySummary.total / grocerySummary.items.length : 0)} icon={<Wallet size={18} />} />
+              </div>
+              <Panel title="Relatorio de comida no mes" icon={<BarChart3 size={18} />}>
+                <ChartFrame>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={grocerySummary.byCategory}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ead7dd" />
+                      <XAxis dataKey="name" stroke="#7a6a70" />
+                      <YAxis stroke="#7a6a70" width={68} tickFormatter={(value) => compactMoney(Number(value))} />
+                      <Tooltip formatter={(value) => money(Number(value))} />
+                      <Bar dataKey="value" fill="#d96b9d" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartFrame>
+              </Panel>
+              <Panel title="Itens comprados" icon={<ShoppingBasket size={18} />}>
+                <SimpleList
+                  items={grocerySummary.items.map((item) => ({
+                    id: item.id,
+                    title: item.item_name,
+                    detail: `${item.purchased_on} · ${item.category}${item.store ? ` · ${item.store}` : ""}`,
+                    value: money(Number(item.amount)),
+                  }))}
+                  empty="Cadastre alimentos, mercado, acougue, hortifruti, delivery e outras compras de comida."
+                />
+              </Panel>
+            </div>
           </div>
         ) : null}
 
@@ -676,6 +999,146 @@ function FullEntryForm({
   );
 }
 
+function GoalForm({
+  goalForm,
+  setGoalForm,
+  saving,
+  onSave,
+}: {
+  goalForm: typeof initialGoalForm;
+  setGoalForm: (value: typeof initialGoalForm) => void;
+  saving: boolean;
+  onSave: () => void;
+}) {
+  return (
+    <Panel title="Nova meta" icon={<Target size={18} />}>
+      <div className="grid gap-3">
+        <Select label="Dona da meta" value={goalForm.owner_label} onChange={(value) => setGoalForm({ ...goalForm, owner_label: value })} options={["Coletiva", "Samuel", "Esposa"]} />
+        <label className="label">
+          Meta
+          <input className="field" placeholder="Ex: viagem, reserva, reforma" value={goalForm.title} onChange={(e) => setGoalForm({ ...goalForm, title: e.target.value })} />
+        </label>
+        <div className="grid grid-cols-2 gap-3 max-[420px]:grid-cols-1">
+          <label className="label">
+            Valor alvo
+            <input className="field" inputMode="decimal" value={goalForm.target_amount} onChange={(e) => setGoalForm({ ...goalForm, target_amount: e.target.value })} />
+          </label>
+          <label className="label">
+            Ja juntamos
+            <input className="field" inputMode="decimal" value={goalForm.current_amount} onChange={(e) => setGoalForm({ ...goalForm, current_amount: e.target.value })} />
+          </label>
+        </div>
+        <label className="label">
+          Acao combinada
+          <input className="field" placeholder="Ex: guardar 500 por mes" value={goalForm.monthly_action} onChange={(e) => setGoalForm({ ...goalForm, monthly_action: e.target.value })} />
+        </label>
+        <label className="label">
+          Data alvo
+          <input className="field" type="date" value={goalForm.target_date} onChange={(e) => setGoalForm({ ...goalForm, target_date: e.target.value })} />
+        </label>
+        <button className="flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-accent px-4 font-semibold text-white hover:bg-accent-strong" disabled={saving} onClick={onSave}>
+          {saving ? <Loader2 className="animate-spin" size={18} /> : <Target size={18} />}
+          Salvar meta
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
+function AssetForm({
+  assetForm,
+  setAssetForm,
+  saving,
+  onSave,
+}: {
+  assetForm: typeof initialAssetForm;
+  setAssetForm: (value: typeof initialAssetForm) => void;
+  saving: boolean;
+  onSave: () => void;
+}) {
+  return (
+    <Panel title="Novo bem" icon={<Package size={18} />}>
+      <div className="grid gap-3">
+        <label className="label">
+          Bem
+          <input className="field" placeholder="Ex: carro, notebook, reserva" value={assetForm.name} onChange={(e) => setAssetForm({ ...assetForm, name: e.target.value })} />
+        </label>
+        <Select label="Tipo" value={assetForm.asset_type} onChange={(value) => setAssetForm({ ...assetForm, asset_type: value })} options={["Veiculo", "Eletronico", "Reserva", "Investimento", "Casa", "Joia", "Outro"]} />
+        <div className="grid grid-cols-2 gap-3 max-[420px]:grid-cols-1">
+          <label className="label">
+            Valor real hoje
+            <input className="field" inputMode="decimal" value={assetForm.estimated_value} onChange={(e) => setAssetForm({ ...assetForm, estimated_value: e.target.value })} />
+          </label>
+          <label className="label">
+            Valor de compra
+            <input className="field" inputMode="decimal" value={assetForm.acquisition_value} onChange={(e) => setAssetForm({ ...assetForm, acquisition_value: e.target.value })} />
+          </label>
+        </div>
+        <label className="label">
+          Data de aquisicao
+          <input className="field" type="date" value={assetForm.acquired_on} onChange={(e) => setAssetForm({ ...assetForm, acquired_on: e.target.value })} />
+        </label>
+        <label className="label">
+          Observacoes
+          <textarea className="field min-h-20 resize-y" value={assetForm.notes} onChange={(e) => setAssetForm({ ...assetForm, notes: e.target.value })} />
+        </label>
+        <button className="flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-accent px-4 font-semibold text-white hover:bg-accent-strong" disabled={saving} onClick={onSave}>
+          {saving ? <Loader2 className="animate-spin" size={18} /> : <Package size={18} />}
+          Salvar bem
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
+function GroceryForm({
+  groceryForm,
+  setGroceryForm,
+  saving,
+  onSave,
+}: {
+  groceryForm: typeof initialGroceryForm;
+  setGroceryForm: (value: typeof initialGroceryForm) => void;
+  saving: boolean;
+  onSave: () => void;
+}) {
+  return (
+    <Panel title="Adicionar na feira" icon={<ShoppingBasket size={18} />}>
+      <div className="grid gap-3">
+        <label className="label">
+          Alimento ou compra
+          <input className="field" placeholder="Ex: arroz, carne, frutas" value={groceryForm.item_name} onChange={(e) => setGroceryForm({ ...groceryForm, item_name: e.target.value })} />
+        </label>
+        <div className="grid grid-cols-2 gap-3 max-[420px]:grid-cols-1">
+          <label className="label">
+            Valor
+            <input className="field" inputMode="decimal" value={groceryForm.amount} onChange={(e) => setGroceryForm({ ...groceryForm, amount: e.target.value })} />
+          </label>
+          <label className="label">
+            Quantidade
+            <input className="field" inputMode="decimal" value={groceryForm.quantity} onChange={(e) => setGroceryForm({ ...groceryForm, quantity: e.target.value })} />
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-3 max-[420px]:grid-cols-1">
+          <Select label="Categoria" value={groceryForm.category} onChange={(value) => setGroceryForm({ ...groceryForm, category: value })} options={["Alimentos", "Hortifruti", "Carnes", "Laticinios", "Padaria", "Bebidas", "Delivery", "Limpeza", "Outros"]} />
+          <label className="label">
+            Data
+            <input className="field" type="date" value={groceryForm.purchased_on} onChange={(e) => setGroceryForm({ ...groceryForm, purchased_on: e.target.value })} />
+          </label>
+        </div>
+        <label className="label">
+          Mercado/local
+          <input className="field" value={groceryForm.store} onChange={(e) => setGroceryForm({ ...groceryForm, store: e.target.value })} />
+        </label>
+        <button className="flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-accent px-4 font-semibold text-white hover:bg-accent-strong" disabled={saving} onClick={onSave}>
+          {saving ? <Loader2 className="animate-spin" size={18} /> : <ShoppingBasket size={18} />}
+          Salvar item
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
 function RecentTransactions({ loading, transactions }: { loading: boolean; transactions: Transaction[] }) {
   return (
     <Panel title="Lancamentos recentes" icon={<CreditCard size={18} />}>
@@ -740,6 +1203,62 @@ function CouplePanel({ couple }: { couple: Couple | null }) {
       </div>
     </Panel>
   );
+}
+
+function GoalCard({ goal }: { goal: FinancialGoal }) {
+  const target = Number(goal.target_amount);
+  const current = Number(goal.current_amount);
+  const progress = target ? Math.min(Math.round((current / target) * 100), 100) : 0;
+
+  return (
+    <div className="rounded-2xl border border-border bg-white p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#b94075]">{goal.owner_label}</p>
+          <h3 className="mt-1 font-semibold">{goal.title}</h3>
+        </div>
+        <span className="rounded-full bg-[#ffe0ea] px-3 py-1 text-xs font-semibold text-[#91365f]">{progress}%</span>
+      </div>
+      <div className="mt-4 h-3 overflow-hidden rounded-full bg-[#f3e7ea]">
+        <div className="h-full rounded-full bg-[#d96b9d]" style={{ width: `${progress}%` }} />
+      </div>
+      <div className="mt-3 flex justify-between gap-3 text-sm text-muted">
+        <span>{money(current)}</span>
+        <span>{money(target)}</span>
+      </div>
+      {goal.monthly_action ? <p className="mt-3 text-sm leading-6 text-muted">{goal.monthly_action}</p> : null}
+    </div>
+  );
+}
+
+function SimpleList({
+  items,
+  empty,
+}: {
+  items: Array<{ id: string; title: string; detail: string; value: string }>;
+  empty: string;
+}) {
+  if (!items.length) {
+    return <EmptyState text={empty} />;
+  }
+
+  return (
+    <div className="grid gap-2">
+      {items.map((item) => (
+        <div key={item.id} className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-white p-3">
+          <div>
+            <p className="font-semibold">{item.title}</p>
+            <p className="text-sm leading-6 text-muted">{item.detail}</p>
+          </div>
+          <p className="shrink-0 font-semibold">{item.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return <p className="rounded-2xl border border-dashed border-border bg-white p-4 text-sm leading-6 text-muted">{text}</p>;
 }
 
 function Metric({ title, value, icon, tone = "accent" }: { title: string; value: string; icon: React.ReactNode; tone?: "accent" | "danger" }) {
@@ -887,4 +1406,3 @@ function typeLabel(value: string) {
   };
   return labels[value] ?? value;
 }
-

@@ -18,6 +18,47 @@ export type Transaction = {
   created_at: string;
 };
 
+export type FinancialGoal = {
+  id: string;
+  couple_id: string;
+  created_by: string | null;
+  owner_label: string;
+  title: string;
+  target_amount: number;
+  current_amount: number;
+  monthly_action: string | null;
+  target_date: string | null;
+  status: "active" | "paused" | "done";
+  created_at: string;
+};
+
+export type Asset = {
+  id: string;
+  couple_id: string;
+  created_by: string | null;
+  name: string;
+  asset_type: string;
+  estimated_value: number;
+  acquisition_value: number | null;
+  acquired_on: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type GroceryItem = {
+  id: string;
+  couple_id: string;
+  created_by: string | null;
+  purchased_on: string;
+  item_name: string;
+  category: string;
+  amount: number;
+  quantity: number;
+  store: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
 export const categories = [
   "Moradia",
   "Mercado",
@@ -60,4 +101,3 @@ export function signedAmount(transaction: Pick<Transaction, "amount" | "transact
 
   return Math.abs(Number(transaction.amount));
 }
-
