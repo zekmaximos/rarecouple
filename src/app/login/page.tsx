@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { Eye, EyeOff, KeyRound, Loader2, Mail } from "lucide-react";
+import { Eye, EyeOff, Heart, Loader2, Mail, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
@@ -30,7 +30,12 @@ export default function LoginPage() {
     const result =
       mode === "signin"
         ? await supabase.auth.signInWithPassword(payload)
-        : await supabase.auth.signUp(payload);
+        : await supabase.auth.signUp({
+            ...payload,
+            options: {
+              emailRedirectTo: `${window.location.origin}/auth/callback`,
+            },
+          });
 
     if (result.error) {
       setMessage(result.error.message);
@@ -49,22 +54,24 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
-      <section className="flex min-h-[42vh] flex-col justify-between bg-[#103b35] p-6 text-white sm:p-10 lg:min-h-screen">
+    <main className="grid min-h-screen bg-[#fff8f4] lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="relative flex min-h-[42vh] flex-col justify-between overflow-hidden bg-[#853f66] p-6 text-white sm:p-10 lg:min-h-screen">
+        <div className="pointer-events-none absolute right-[-80px] top-[-80px] size-56 rounded-full bg-[#f5c4d9]/35 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-24 left-[-90px] size-64 rounded-full bg-[#8dd7ca]/30 blur-3xl" />
         <div className="flex items-center gap-3">
-          <div className="grid size-11 place-items-center rounded-lg bg-white text-[#103b35]">
-            <KeyRound size={22} />
+          <div className="grid size-11 place-items-center rounded-2xl bg-white text-[#853f66] shadow-sm">
+            <Heart size={22} fill="currentColor" />
           </div>
           <div>
             <p className="font-semibold">RareCouple</p>
-            <p className="text-sm text-white/70">Financas do casal</p>
+            <p className="text-sm text-white/75">Financas do casal</p>
           </div>
         </div>
-        <div className="max-w-xl py-12">
-          <p className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-[#a4ddd2]">
-            Privado, diario e claro
+        <div className="relative max-w-xl py-12">
+          <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-[#ffd6e7]">
+            Privado, leve e organizado
           </p>
-          <h1 className="text-4xl font-semibold leading-tight sm:text-6xl">
+          <h1 className="text-4xl font-semibold leading-tight sm:text-5xl xl:text-6xl">
             Uma rotina financeira para duas pessoas decidirem melhor.
           </h1>
           <p className="mt-6 max-w-lg text-lg leading-8 text-white/76">
@@ -72,23 +79,23 @@ export default function LoginPage() {
             padronizado desde a primeira versao.
           </p>
         </div>
-        <p className="text-sm text-white/60">
-          Use apenas emails autorizados no Supabase Auth para manter o acesso
-          exclusivo.
-        </p>
+        <div className="relative flex items-center gap-2 text-sm text-white/70">
+          <ShieldCheck size={17} />
+          Acesso pensado para apenas duas contas autorizadas.
+        </div>
       </section>
 
       <section className="flex items-center justify-center p-6 sm:p-10">
         <form
           onSubmit={handleSubmit}
-          className="w-full max-w-md rounded-lg border border-border bg-panel p-6 shadow-sm sm:p-8"
+          className="w-full max-w-md rounded-2xl border border-[#ead7dd] bg-white p-6 shadow-[0_18px_70px_rgba(133,63,102,0.12)] sm:p-8"
         >
           <div className="mb-8">
             <p className="text-sm font-semibold text-accent">
               {mode === "signin" ? "Entrar" : "Criar acesso"}
             </p>
-            <h2 className="mt-2 text-3xl font-semibold">
-              {mode === "signin" ? "Bem-vindos de volta" : "Comecar o RareCouple"}
+            <h2 className="mt-2 text-2xl font-semibold leading-tight sm:text-3xl">
+              {mode === "signin" ? "Bem-vindos de volta" : "Criar conta RareCouple"}
             </h2>
           </div>
 
@@ -139,7 +146,7 @@ export default function LoginPage() {
           ) : null}
 
           <button
-            className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 font-semibold text-white transition hover:bg-accent-strong"
+            className="mt-6 flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-accent px-4 font-semibold text-white transition hover:bg-accent-strong"
             disabled={loading}
           >
             {loading ? <Loader2 className="animate-spin" size={18} /> : null}
@@ -161,4 +168,3 @@ export default function LoginPage() {
     </main>
   );
 }
-

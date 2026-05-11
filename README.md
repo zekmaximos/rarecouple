@@ -22,6 +22,7 @@ Preencha `.env.local` com:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+NEXT_PUBLIC_SITE_URL=https://rarecouple.vercel.app
 ```
 
 O projeto tambem inclui `src/proxy.ts` para manter a sessao Supabase atualizada em rotas Next.js 16.
@@ -32,7 +33,10 @@ O projeto tambem inclui `src/proxy.ts` para manter a sessao Supabase atualizada 
 2. Abra o SQL Editor.
 3. Execute `supabase/migrations/001_initial_schema.sql`.
 4. Em Authentication, mantenha apenas emails autorizados para o uso do casal.
-5. Copie `Project URL` e `Publishable key` para `.env.local` e para as variaveis da Vercel.
+5. Em Authentication > URL Configuration, use `https://rarecouple.vercel.app` como Site URL e Redirect URL.
+6. Copie `Project URL` e `Publishable key` para `.env.local` e para as variaveis da Vercel.
+
+Para uso exclusivo do casal, crie/convide os dois usuarios e depois desative novos cadastros publicos no Supabase Auth.
 
 O schema usa uma conta compartilhada (`couples`), membros (`couple_members`) e lancamentos (`transactions`). Todas as tabelas publicas estao com RLS ativo.
 

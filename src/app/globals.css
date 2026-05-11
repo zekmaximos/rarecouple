@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f4ee;
-  --foreground: #17201b;
-  --muted: #6b6f68;
-  --panel: #fffdf8;
-  --panel-strong: #f0ebe1;
-  --border: #ded6ca;
-  --accent: #116a61;
-  --accent-strong: #0b4f49;
-  --accent-soft: #dff1ec;
-  --danger: #b54133;
+  --background: #fff8f4;
+  --foreground: #262026;
+  --muted: #7a6a70;
+  --panel: #fffefd;
+  --panel-strong: #fff0f5;
+  --border: #ead7dd;
+  --accent: #2f9f90;
+  --accent-strong: #23786d;
+  --accent-soft: #dff4ef;
+  --danger: #c65376;
   --warning: #b47a16;
   --success: #207345;
 }
@@ -71,8 +71,9 @@ button:disabled {
 .field {
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
   background: white;
+  min-height: 44px;
   padding: 0.68rem 0.8rem;
   color: var(--foreground);
   outline: none;
@@ -92,4 +93,3 @@ button:disabled {
   font-weight: 650;
   letter-spacing: 0;
 }
-
