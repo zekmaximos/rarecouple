@@ -16,7 +16,10 @@ import { createClient } from "@/lib/supabase/client";
 import {
   ArrowDownToLine,
   BarChart3,
+  Bell,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   CreditCard,
   Download,
   Heart,
@@ -27,12 +30,15 @@ import {
   PiggyBank,
   Plus,
   RefreshCcw,
+  Search,
   ShieldCheck,
-  Sparkles,
-  TrendingUp,
   ShoppingBasket,
+  Sparkles,
   Target,
+  Trash2,
+  TrendingUp,
   Wallet,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -56,6 +62,8 @@ type Couple = {
   name: string;
   invite_code: string;
 };
+
+type SpecialDate = { id: string; label: string; date: string }; // date: MM-DD
 
 type Props = {
   userEmail: string;
@@ -136,6 +144,17 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
   const [groceryForm, setGroceryForm] = useState(initialGroceryForm);
   const [evaBubble, setEvaBubble] = useState<{ id: number; quote: string; photo: string } | null>(null);
   const lastEvaAt = useRef(0);
+
+  // Filtros de transações
+  const [filterMonth, setFilterMonth] = useState(today.slice(0, 7));
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterType, setFilterType] = useState("");
+  const [searchText, setSearchText] = useState("");
+
+  // Datas especiais (localStorage)
+  const [specialDates, setSpecialDates] = useState<SpecialDate[]>([]);
+  const [specialDateForm, setSpecialDateForm] = useState({ label: "", date: "" });
+  const [specialDateAlert, setSpecialDateAlert] = useState<string | null>(null);
 
   function summonEva(tab?: string) {
     const quote = getEvaQuote(tab);
@@ -306,6 +325,16 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     };
   }, [assets]);
 
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((item) => {
+      if (filterMonth && !item.occurred_on.startsWith(filterMonth)) return false;
+      if (filterCategory && item.category !== filterCategory) return false;
+      if (filterType && item.transaction_type !== filterType) return false;
+      if (searchText && !item.description.toLowerCase().includes(searchText.toLowerCase())) return false;
+      return true;
+    });
+  }, [transactions, filterMonth, filterCategory, filterType, searchText]);
+
   const grocerySummary = useMemo(() => {
     const month = today.slice(0, 7);
     const monthItems = groceryItems.filter((item) => item.purchased_on.slice(0, 7) === month);
@@ -415,10 +444,26 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
 
   useEffect(() => {
     if (!evaBubble) return;
-
     const timeout = window.setTimeout(() => setEvaBubble(null), 6800);
     return () => window.clearTimeout(timeout);
   }, [evaBubble]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("rarecouple-special-dates");
+      if (stored) {
+        const dates = JSON.parse(stored) as SpecialDate[];
+        setSpecialDates(dates);
+        const todayMMDD = today.slice(5);
+        const soon = dates.find((d) => {
+          const [am, ad] = d.date.split("-").map(Number);
+          const [bm, bd] = todayMMDD.split("-").map(Number);
+          return Math.abs(am * 31 + ad - (bm * 31 + bd)) <= 3;
+        });
+        if (soon) setSpecialDateAlert(soon.label);
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   useEffect(() => {
     if (!supabase || !couple) return;
@@ -590,6 +635,56 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     setSaving(false);
   }
 
+  async function deleteTransaction(id: string) {
+    if (!supabase) return;
+    await supabase.from("transactions").delete().eq("id", id);
+    await loadData();
+    summonEva(activeTab);
+  }
+
+  async function deleteGroceryItem(id: string) {
+    if (!supabase) return;
+    await supabase.from("grocery_items").delete().eq("id", id);
+    await loadData();
+    summonEva("groceries");
+  }
+
+  async function updateGoalAmount(id: string, newAmount: number) {
+    if (!supabase) return;
+    await supabase.from("financial_goals").update({ current_amount: newAmount }).eq("id", id);
+    await loadData();
+    summonEva("goals");
+  }
+
+  function saveSpecialDate() {
+    if (!specialDateForm.label.trim() || !specialDateForm.date) return;
+    const newDate: SpecialDate = { id: String(Date.now()), label: specialDateForm.label.trim(), date: specialDateForm.date };
+    const updated = [...specialDates, newDate];
+    setSpecialDates(updated);
+    localStorage.setItem("rarecouple-special-dates", JSON.stringify(updated));
+    setSpecialDateForm({ label: "", date: "" });
+    summonEva("security");
+  }
+
+  function removeSpecialDate(id: string) {
+    const updated = specialDates.filter((d) => d.id !== id);
+    setSpecialDates(updated);
+    localStorage.setItem("rarecouple-special-dates", JSON.stringify(updated));
+  }
+
+  function prevMonth() {
+    const [y, m] = filterMonth.split("-").map(Number);
+    const d = new Date(y, m - 2, 1);
+    setFilterMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+
+  function nextMonth() {
+    const [y, m] = filterMonth.split("-").map(Number);
+    const d = new Date(y, m, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (key <= today.slice(0, 7)) setFilterMonth(key);
+  }
+
   async function signOut() {
     await fetch("/api/logout", { method: "POST" });
     window.location.href = "/login";
@@ -694,6 +789,18 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
 
         {message ? <p className="mt-3 rounded-2xl bg-[#fff4d8] p-3 text-sm text-[#6b4b09]">{message}</p> : null}
 
+        {specialDateAlert ? (
+          <div className="mt-3 flex items-center gap-3 rounded-2xl border border-[#ead7dd] bg-[#fff0f5] p-3">
+            <Bell size={18} className="shrink-0 text-[#b94075]" />
+            <p className="flex-1 text-sm font-semibold text-[#91365f]">
+              🐾 Eva Flor lembra: <span className="font-bold">{specialDateAlert}</span> está chegando! Aproveitem juntos.
+            </p>
+            <button onClick={() => setSpecialDateAlert(null)} className="text-[#b94075] hover:opacity-70">
+              <X size={16} />
+            </button>
+          </div>
+        ) : null}
+
         {activeTab === "overview" ? (
           <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_390px]">
             <div className="grid gap-5">
@@ -745,7 +852,19 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
                 </Panel>
               </section>
 
-              <RecentTransactions loading={loading} transactions={transactions} />
+              <TransactionFilters
+                filterMonth={filterMonth}
+                filterCategory={filterCategory}
+                filterType={filterType}
+                searchText={searchText}
+                onPrevMonth={prevMonth}
+                onNextMonth={nextMonth}
+                onCategoryChange={setFilterCategory}
+                onTypeChange={setFilterType}
+                onSearchChange={setSearchText}
+                isCurrentMonth={filterMonth === today.slice(0, 7)}
+              />
+              <RecentTransactions loading={loading} transactions={filteredTransactions} onDelete={deleteTransaction} />
             </div>
 
             <div className="grid content-start gap-5">
@@ -838,7 +957,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
               <Panel title="Metas coletivas e individuais" icon={<Target size={18} />}>
                 <div className="grid gap-3 md:grid-cols-2">
                   {goals.map((goal) => (
-                    <GoalCard key={goal.id} goal={goal} />
+                    <GoalCard key={goal.id} goal={goal} onUpdate={updateGoalAmount} />
                   ))}
                   {!goals.length ? <EmptyState text="Nenhuma meta ainda. Comecem por uma coletiva pequena e clara." /> : null}
                 </div>
@@ -914,6 +1033,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
                     value: money(Number(item.amount)),
                   }))}
                   empty="Cadastre alimentos, mercado, acougue, hortifruti, delivery e outras compras de comida."
+                  onDelete={deleteGroceryItem}
                 />
               </Panel>
             </div>
@@ -922,6 +1042,63 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
 
         {activeTab === "security" ? (
           <div className="mt-4 grid gap-5 lg:grid-cols-[1fr_0.9fr]">
+            <Panel title="Datas especiais" icon={<Bell size={18} />}>
+              <div className="grid gap-3">
+                <div className="grid grid-cols-[1fr_140px_auto] gap-2 max-[520px]:grid-cols-1">
+                  <label className="label">
+                    Nome da data
+                    <input
+                      className="field"
+                      placeholder="Ex: Aniversario do casal"
+                      value={specialDateForm.label}
+                      onChange={(e) => setSpecialDateForm({ ...specialDateForm, label: e.target.value })}
+                    />
+                  </label>
+                  <label className="label">
+                    Mes e dia
+                    <input
+                      className="field"
+                      type="date"
+                      value={specialDateForm.date ? `2000-${specialDateForm.date}` : ""}
+                      onChange={(e) => setSpecialDateForm({ ...specialDateForm, date: e.target.value.slice(5) })}
+                    />
+                  </label>
+                  <div className="label">
+                    <span className="invisible text-xs">add</span>
+                    <button
+                      onClick={saveSpecialDate}
+                      className="flex h-11 items-center justify-center gap-2 rounded-xl bg-accent px-4 font-semibold text-white hover:bg-accent-strong"
+                    >
+                      <Plus size={16} />
+                      Salvar
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted">
+                  A Eva Flor aparece automaticamente nos 3 dias antes de cada data cadastrada aqui.
+                  As datas ficam salvas neste dispositivo.
+                </p>
+                {specialDates.length > 0 ? (
+                  <div className="grid gap-2">
+                    {specialDates.map((d) => (
+                      <div key={d.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white px-3 py-2.5">
+                        <div>
+                          <p className="text-sm font-semibold">{d.label}</p>
+                          <p className="text-xs text-muted">{d.date} (todo ano)</p>
+                        </div>
+                        <button onClick={() => removeSpecialDate(d.id)} className="text-muted hover:text-danger">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-2xl border border-dashed border-border bg-white p-3 text-sm text-muted">
+                    Nenhuma data cadastrada ainda. Adicionem o aniversario do casal!
+                  </p>
+                )}
+              </div>
+            </Panel>
             <Panel title="Acesso exclusivo" icon={<ShieldCheck size={18} />}>
               <div className="grid gap-3">
                 <SecurityItem title="Dois acessos internos" text="Somente Samuel e Stephanie entram com os identificadores definidos no app." done />
@@ -1304,17 +1481,41 @@ function GroceryForm({
   );
 }
 
-function RecentTransactions({ loading, transactions }: { loading: boolean; transactions: Transaction[] }) {
+function RecentTransactions({
+  loading,
+  transactions,
+  onDelete,
+}: {
+  loading: boolean;
+  transactions: Transaction[];
+  onDelete: (id: string) => void;
+}) {
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  function handleDelete(id: string) {
+    if (confirmId === id) {
+      onDelete(id);
+      setConfirmId(null);
+    } else {
+      setConfirmId(id);
+      setTimeout(() => setConfirmId(null), 3000);
+    }
+  }
+
   return (
-    <Panel title="Lancamentos recentes" icon={<CreditCard size={18} />}>
+    <Panel title={`Lancamentos (${transactions.length})`} icon={<CreditCard size={18} />}>
       {loading ? (
         <div className="flex h-40 items-center justify-center text-muted">
           <Loader2 className="animate-spin" />
         </div>
+      ) : transactions.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-border bg-white p-4 text-sm text-muted">
+          Nenhum lancamento encontrado para os filtros selecionados.
+        </p>
       ) : (
         <>
           <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[760px] text-left text-sm">
+            <table className="w-full min-w-[800px] text-left text-sm">
               <thead className="text-muted">
                 <tr className="border-b border-border">
                   <th className="py-3">Data</th>
@@ -1323,31 +1524,49 @@ function RecentTransactions({ loading, transactions }: { loading: boolean; trans
                   <th>Tipo</th>
                   <th>Parcela</th>
                   <th className="text-right">Valor</th>
+                  <th className="w-10" />
                 </tr>
               </thead>
               <tbody>
-                {transactions.slice(0, 12).map((item) => (
-                  <tr key={item.id} className="border-b border-border/70">
+                {transactions.slice(0, 20).map((item) => (
+                  <tr key={item.id} className="border-b border-border/70 hover:bg-[#fff8f4]">
                     <td className="py-3 font-mono text-xs">{item.occurred_on}</td>
                     <td className="font-medium">{item.description}</td>
                     <td>{item.category}</td>
                     <td>{typeLabel(item.transaction_type)}</td>
                     <td>{item.installment_number}/{item.installments_total}</td>
                     <td className="text-right font-semibold">{money(Number(item.amount))}</td>
+                    <td className="pl-2">
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        title={confirmId === item.id ? "Clique de novo para confirmar" : "Excluir"}
+                        className={`rounded-lg p-1.5 transition ${confirmId === item.id ? "bg-danger text-white" : "text-muted hover:text-danger"}`}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <div className="grid gap-2 md:hidden">
-            {transactions.slice(0, 8).map((item) => (
+            {transactions.slice(0, 20).map((item) => (
               <div key={item.id} className="rounded-2xl border border-border bg-white p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold">{item.description}</p>
                     <p className="text-xs text-muted">{item.occurred_on} · {item.category}</p>
                   </div>
-                  <p className="shrink-0 font-semibold">{money(Number(item.amount))}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="shrink-0 font-semibold">{money(Number(item.amount))}</p>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className={`rounded-lg p-1.5 ${confirmId === item.id ? "bg-danger text-white" : "text-muted hover:text-danger"}`}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -1370,10 +1589,22 @@ function CouplePanel({ couple }: { couple: Couple | null }) {
   );
 }
 
-function GoalCard({ goal }: { goal: FinancialGoal }) {
+function GoalCard({ goal, onUpdate }: { goal: FinancialGoal; onUpdate: (id: string, amount: number) => void }) {
   const target = Number(goal.target_amount);
   const current = Number(goal.current_amount);
   const progress = target ? Math.min(Math.round((current / target) * 100), 100) : 0;
+  const [editing, setEditing] = useState(false);
+  const [inputVal, setInputVal] = useState(String(current));
+  const [saving, setSaving] = useState(false);
+
+  async function handleUpdate() {
+    const val = Number(String(inputVal).replace(",", "."));
+    if (isNaN(val) || val < 0) return;
+    setSaving(true);
+    await onUpdate(goal.id, val);
+    setSaving(false);
+    setEditing(false);
+  }
 
   return (
     <div className="rounded-2xl border border-border bg-white p-4">
@@ -1392,6 +1623,36 @@ function GoalCard({ goal }: { goal: FinancialGoal }) {
         <span>{money(target)}</span>
       </div>
       {goal.monthly_action ? <p className="mt-3 text-sm leading-6 text-muted">{goal.monthly_action}</p> : null}
+      {editing ? (
+        <div className="mt-3 flex gap-2">
+          <input
+            className="field h-9 flex-1 text-sm"
+            inputMode="decimal"
+            value={inputVal}
+            onChange={(e) => setInputVal(e.target.value)}
+            placeholder="Valor atual"
+          />
+          <button
+            onClick={handleUpdate}
+            disabled={saving}
+            className="flex h-9 items-center gap-1.5 rounded-xl bg-accent px-3 text-xs font-semibold text-white hover:bg-accent-strong disabled:opacity-60"
+          >
+            {saving ? <Loader2 size={13} className="animate-spin" /> : null}
+            Salvar
+          </button>
+          <button onClick={() => setEditing(false)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-muted hover:text-foreground">
+            <X size={13} />
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => { setInputVal(String(current)); setEditing(true); }}
+          className="mt-3 flex items-center gap-1.5 rounded-lg border border-[#ead7dd] bg-[#fff0f5] px-2.5 py-1 text-xs font-semibold text-[#b94075] hover:bg-[#ffe0ea] transition"
+        >
+          <Plus size={11} />
+          Atualizar progresso
+        </button>
+      )}
     </div>
   );
 }
@@ -1399,10 +1660,25 @@ function GoalCard({ goal }: { goal: FinancialGoal }) {
 function SimpleList({
   items,
   empty,
+  onDelete,
 }: {
   items: Array<{ id: string; title: string; detail: string; value: string }>;
   empty: string;
+  onDelete?: (id: string) => void;
 }) {
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  function handleDelete(id: string) {
+    if (!onDelete) return;
+    if (confirmId === id) {
+      onDelete(id);
+      setConfirmId(null);
+    } else {
+      setConfirmId(id);
+      setTimeout(() => setConfirmId(null), 3000);
+    }
+  }
+
   if (!items.length) {
     return <EmptyState text={empty} />;
   }
@@ -1411,13 +1687,117 @@ function SimpleList({
     <div className="grid gap-2">
       {items.map((item) => (
         <div key={item.id} className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-white p-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="font-semibold">{item.title}</p>
             <p className="text-sm leading-6 text-muted">{item.detail}</p>
           </div>
-          <p className="shrink-0 font-semibold">{item.value}</p>
+          <div className="flex shrink-0 items-center gap-2">
+            <p className="font-semibold">{item.value}</p>
+            {onDelete ? (
+              <button
+                onClick={() => handleDelete(item.id)}
+                title={confirmId === item.id ? "Clique de novo para confirmar" : "Excluir"}
+                className={`rounded-lg p-1.5 transition ${confirmId === item.id ? "bg-danger text-white" : "text-muted hover:text-danger"}`}
+              >
+                <Trash2 size={13} />
+              </button>
+            ) : null}
+          </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function TransactionFilters({
+  filterMonth,
+  filterCategory,
+  filterType,
+  searchText,
+  onPrevMonth,
+  onNextMonth,
+  onCategoryChange,
+  onTypeChange,
+  onSearchChange,
+  isCurrentMonth,
+}: {
+  filterMonth: string;
+  filterCategory: string;
+  filterType: string;
+  searchText: string;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  onCategoryChange: (v: string) => void;
+  onTypeChange: (v: string) => void;
+  onSearchChange: (v: string) => void;
+  isCurrentMonth: boolean;
+}) {
+  const label = (() => {
+    const [y, m] = filterMonth.split("-").map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  })();
+
+  return (
+    <div className="rounded-2xl border border-border bg-panel p-3 shadow-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Navegação de mês */}
+        <div className="flex items-center gap-1 rounded-xl border border-border bg-white px-1">
+          <button onClick={onPrevMonth} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:text-foreground">
+            <ChevronLeft size={16} />
+          </button>
+          <span className="min-w-[130px] text-center text-sm font-semibold capitalize">{label}</span>
+          <button
+            onClick={onNextMonth}
+            disabled={isCurrentMonth}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:text-foreground disabled:opacity-30"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+
+        {/* Filtro de categoria */}
+        <select
+          className="field h-9 w-auto min-w-[130px] text-sm"
+          value={filterCategory}
+          onChange={(e) => onCategoryChange(e.target.value)}
+        >
+          <option value="">Todas categorias</option>
+          {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+
+        {/* Filtro de tipo */}
+        <select
+          className="field h-9 w-auto text-sm"
+          value={filterType}
+          onChange={(e) => onTypeChange(e.target.value)}
+        >
+          <option value="">Todos tipos</option>
+          <option value="expense">Despesa</option>
+          <option value="income">Receita</option>
+          <option value="investment">Investimento</option>
+        </select>
+
+        {/* Busca por texto */}
+        <div className="relative flex-1 min-w-[160px]">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+          <input
+            className="field h-9 pl-8 text-sm"
+            placeholder="Buscar descrição..."
+            value={searchText}
+            onChange={(e) => onSearchChange(e.target.value)}
+          />
+        </div>
+
+        {/* Limpar filtros */}
+        {(filterCategory || filterType || searchText) ? (
+          <button
+            onClick={() => { onCategoryChange(""); onTypeChange(""); onSearchChange(""); }}
+            className="flex h-9 items-center gap-1.5 rounded-xl border border-border bg-white px-3 text-sm text-muted hover:text-foreground"
+          >
+            <X size={13} /> Limpar
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
