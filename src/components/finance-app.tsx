@@ -239,6 +239,35 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
     ];
   }, [byCategory, totals]);
 
+  const periodSummary = useMemo(() => {
+    const now = new Date();
+    const todayKey = toDateKey(now);
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const monthKey = todayKey.slice(0, 7);
+
+    const expenseInPeriod = (predicate: (date: Date, key: string) => boolean) =>
+      transactions
+        .filter((item) => item.transaction_type === "expense")
+        .filter((item) => {
+          const date = parseLocalDate(item.occurred_on);
+          return predicate(date, item.occurred_on);
+        })
+        .reduce((total, item) => total + Number(item.amount), 0);
+
+    const daily = expenseInPeriod((_, key) => key === todayKey);
+    const weekly = expenseInPeriod((date) => date >= weekStart && date <= now);
+    const monthly = expenseInPeriod((_, key) => key.startsWith(monthKey));
+
+    return {
+      daily,
+      weekly,
+      monthly,
+      dailyAverage: new Date().getDate() ? monthly / new Date().getDate() : 0,
+    };
+  }, [transactions]);
+
   const goalSummary = useMemo(() => {
     const target = goals.reduce((total, item) => total + Number(item.target_amount), 0);
     const current = goals.reduce((total, item) => total + Number(item.current_amount), 0);
@@ -308,6 +337,29 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
       setMessage(membershipError.message);
       setLoading(false);
       return;
+    }
+
+    if (!memberships.length) {
+      const { data: sharedCouple } = await supabase
+        .from("couples")
+        .select("id, name, invite_code")
+        .eq("name", "RareCouple")
+        .limit(1)
+        .maybeSingle();
+
+      if (sharedCouple) {
+        const { error: joinError } = await supabase
+          .from("couple_members")
+          .insert({ couple_id: sharedCouple.id, user_id: user.id, role: "member" });
+
+        if (joinError) {
+          setMessage(joinError.message);
+          setLoading(false);
+          return;
+        }
+
+        memberships = [{ couple_id: sharedCouple.id, couples: sharedCouple as Couple }];
+      }
     }
 
     if (!memberships.length) {
@@ -670,6 +722,15 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
                 <Metric title="Saldo" value={money(totals.balance)} icon={<Wallet size={18} />} />
                 <Metric title="Poupanca" value={`${totals.savingsRate}%`} icon={<PiggyBank size={18} />} />
               </div>
+
+              <Panel title="Resumo de gastos" icon={<CalendarDays size={18} />}>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <PeriodCard title="Hoje" value={periodSummary.daily} helper="Gasto registrado no dia" />
+                  <PeriodCard title="Semana" value={periodSummary.weekly} helper="Do domingo ate hoje" />
+                  <PeriodCard title="Mes" value={periodSummary.monthly} helper="Total do mes atual" />
+                  <PeriodCard title="Media diaria" value={periodSummary.dailyAverage} helper="Media do mes ate agora" />
+                </div>
+              </Panel>
 
               <section className="grid gap-5 xl:grid-cols-[1fr_0.82fr]">
                 <Panel title="Fluxo mensal" icon={<BarChart3 size={18} />}>
@@ -1273,6 +1334,16 @@ function Metric({ title, value, icon, tone = "accent" }: { title: string; value:
   );
 }
 
+function PeriodCard({ title, value, helper }: { title: string; value: number; helper: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-white p-4">
+      <p className="text-sm font-semibold text-[#b94075]">{title}</p>
+      <p className="mt-2 text-2xl font-semibold">{money(value)}</p>
+      <p className="mt-1 text-sm text-muted">{helper}</p>
+    </div>
+  );
+}
+
 function Panel({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="rounded-2xl border border-border bg-panel p-4 shadow-sm">
@@ -1387,6 +1458,18 @@ function SecurityItem({ title, text, done = false }: { title: string; text: stri
 
 function sum(items: Transaction[]) {
   return items.reduce((total, item) => total + Number(item.amount), 0);
+}
+
+function parseLocalDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function toDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function compactMoney(value: number) {

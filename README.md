@@ -33,11 +33,12 @@ O projeto tambem inclui `src/proxy.ts` para manter a sessao Supabase atualizada 
 2. Abra o SQL Editor.
 3. Execute `supabase/migrations/001_initial_schema.sql`.
 4. Execute `supabase/migrations/002_repair_realtime_goals_assets_groceries.sql`.
-5. Em Authentication, mantenha apenas emails autorizados para o uso do casal.
-6. Em Authentication > URL Configuration, use `https://rarecouple.vercel.app` como Site URL e Redirect URL.
-7. Copie `Project URL` e `Publishable key` para `.env.local` e para as variaveis da Vercel.
+5. Execute `supabase/migrations/003_private_two_user_household.sql`.
+6. Em Authentication, mantenha apenas emails autorizados para o uso do casal.
+7. Em Authentication > URL Configuration, use `https://rarecouple.vercel.app` como Site URL e Redirect URL.
+8. Copie `Project URL` e `Publishable key` para `.env.local` e para as variaveis da Vercel.
 
-Para uso exclusivo do casal, crie/convide os dois usuarios e depois desative novos cadastros publicos no Supabase Auth.
+Para uso exclusivo do casal, crie/convide apenas `samuel.morais@rarecouple.com` e `stephanie.carvalho@rarecouple.com`, depois desative novos cadastros publicos no Supabase Auth.
 
 A migration 002 tambem ativa Realtime para lancamentos, metas, bens e feira.
 

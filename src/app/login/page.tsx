@@ -5,11 +5,15 @@ import { Eye, EyeOff, Heart, Loader2, Mail, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
+const allowedEmails = new Set([
+  "samuel.morais@rarecouple.com",
+  "stephanie.carvalho@rarecouple.com",
+]);
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,25 +30,21 @@ export default function LoginPage() {
       return;
     }
 
-    const payload = { email, password };
-    const result =
-      mode === "signin"
-        ? await supabase.auth.signInWithPassword(payload)
-        : await supabase.auth.signUp({
-            ...payload,
-            options: {
-              emailRedirectTo: `${window.location.origin}/auth/callback`,
-            },
-          });
+    const normalizedEmail = email.trim().toLowerCase();
 
-    if (result.error) {
-      setMessage(result.error.message);
+    if (!allowedEmails.has(normalizedEmail)) {
+      setMessage("Este app e exclusivo para Samuel e Stephanie.");
       setLoading(false);
       return;
     }
 
-    if (mode === "signup" && !result.data.session) {
-      setMessage("Cadastro criado. Confirme o email antes de entrar.");
+    const result = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password,
+    });
+
+    if (result.error) {
+      setMessage(result.error.message);
       setLoading(false);
       return;
     }
@@ -91,12 +91,13 @@ export default function LoginPage() {
           className="w-full max-w-md rounded-2xl border border-[#ead7dd] bg-white p-6 shadow-[0_18px_70px_rgba(133,63,102,0.12)] sm:p-8"
         >
           <div className="mb-8">
-            <p className="text-sm font-semibold text-accent">
-              {mode === "signin" ? "Entrar" : "Criar acesso"}
-            </p>
+            <p className="text-sm font-semibold text-accent">Acesso privado</p>
             <h2 className="mt-2 text-2xl font-semibold leading-tight sm:text-3xl">
-              {mode === "signin" ? "Bem-vindos de volta" : "Criar conta RareCouple"}
+              Bem-vindos de volta
             </h2>
+            <p className="mt-3 text-sm leading-6 text-muted">
+              Entram somente os dois emails autorizados do RareCouple.
+            </p>
           </div>
 
           <div className="grid gap-4">
@@ -123,7 +124,7 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   required
                   minLength={6}
-                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                  autoComplete="current-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                 />
@@ -150,18 +151,7 @@ export default function LoginPage() {
             disabled={loading}
           >
             {loading ? <Loader2 className="animate-spin" size={18} /> : null}
-            {mode === "signin" ? "Entrar" : "Criar conta"}
-          </button>
-
-          <button
-            type="button"
-            className="mt-4 w-full text-sm font-semibold text-accent"
-            onClick={() => {
-              setMode((value) => (value === "signin" ? "signup" : "signin"));
-              setMessage("");
-            }}
-          >
-            {mode === "signin" ? "Criar uma nova conta" : "Ja tenho conta"}
+            Entrar
           </button>
         </form>
       </section>
