@@ -35,8 +35,9 @@ O projeto tambem inclui `src/proxy.ts` para manter a sessao Supabase atualizada 
 4. Execute `supabase/migrations/002_repair_realtime_goals_assets_groceries.sql`.
 5. Execute `supabase/migrations/003_private_two_user_household.sql`.
 6. Execute `supabase/migrations/004_internal_login_shared_household.sql`.
-7. O login do app e interno: `samuel.morais@rarecouple.com` e `stephanie.carvalho@rarecouple.com`.
-8. Copie `Project URL` e `Publishable key` para `.env.local` e para as variaveis da Vercel.
+7. Execute `supabase/migrations/005_remove_couple_members_recursion.sql`.
+8. O login do app e interno: `samuel.morais@rarecouple.com` e `stephanie.carvalho@rarecouple.com`.
+9. Copie `Project URL` e `Publishable key` para `.env.local` e para as variaveis da Vercel.
 
 Para uso exclusivo do casal, o app usa sessao HTTP-only propria e senha compartilhada. Os emails sao identificadores internos, nao caixas reais.
 
