@@ -93,3 +93,39 @@ button:disabled {
   font-weight: 650;
   letter-spacing: 0;
 }
+
+@keyframes eva-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes eva-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+
+.eva-enter {
+  animation: eva-slide-up 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes eva-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-4deg); }
+  75% { transform: rotate(4deg); }
+}
+
+.eva-wiggle:hover {
+  animation: eva-wiggle 0.5s ease-in-out;
+}

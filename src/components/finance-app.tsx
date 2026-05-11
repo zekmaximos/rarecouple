@@ -1,6 +1,6 @@
 "use client";
 
-import { evaAvatar, evaQuotes, memories } from "@/lib/brand-assets";
+import { evaAvatar, getEvaQuote, getRandomEvaPhoto, memories } from "@/lib/brand-assets";
 import {
   Asset,
   categories,
@@ -134,24 +134,25 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
   const [goalForm, setGoalForm] = useState(initialGoalForm);
   const [assetForm, setAssetForm] = useState(initialAssetForm);
   const [groceryForm, setGroceryForm] = useState(initialGroceryForm);
-  const [evaBubble, setEvaBubble] = useState<{ id: number; quote: string } | null>(null);
+  const [evaBubble, setEvaBubble] = useState<{ id: number; quote: string; photo: string } | null>(null);
   const lastEvaAt = useRef(0);
 
-  function summonEva() {
-    const quote = evaQuotes[Math.floor(Math.random() * evaQuotes.length)];
-    setEvaBubble({ id: Date.now(), quote });
+  function summonEva(tab?: string) {
+    const quote = getEvaQuote(tab);
+    const photo = getRandomEvaPhoto();
+    setEvaBubble({ id: Date.now(), quote, photo });
   }
 
   function nudgeEva() {
     const now = Date.now();
     if (now - lastEvaAt.current < 14000) return;
     lastEvaAt.current = now;
-    summonEva();
+    summonEva(activeTab);
   }
 
   function switchTab(tab: Tab) {
     setActiveTab(tab);
-    summonEva();
+    summonEva(tab);
   }
 
   const totals = useMemo(() => {
@@ -469,7 +470,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     } else {
       reset();
       await loadData();
-      summonEva();
+      summonEva(activeTab);
     }
 
     setSaving(false);
@@ -517,7 +518,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     } else {
       setGoalForm(initialGoalForm);
       await loadData();
-      summonEva();
+      summonEva("goals");
     }
     setSaving(false);
   }
@@ -550,7 +551,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     } else {
       setAssetForm(initialAssetForm);
       await loadData();
-      summonEva();
+      summonEva("assets");
     }
     setSaving(false);
   }
@@ -584,7 +585,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     } else {
       setGroceryForm(initialGroceryForm);
       await loadData();
-      summonEva();
+      summonEva("groceries");
     }
     setSaving(false);
   }
@@ -638,7 +639,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     link.download = `rarecouple-financas-${today}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    summonEva();
+    summonEva("overview");
   }
 
   if (setupMissing) {
@@ -776,7 +777,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
                   despesa fixa, recorrencia ou observacoes importantes para o CSV.
                 </p>
               </Panel>
-              <EvaCard />
+              <EvaCard tab="entry" />
             </div>
           </div>
         ) : null}
@@ -938,7 +939,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
                 </p>
               </div>
             </Panel>
-            <EvaCard />
+            <EvaCard tab="security" />
           </div>
         ) : null}
       </section>
@@ -995,32 +996,70 @@ function MemoryPanel({ wide = false }: { wide?: boolean }) {
   );
 }
 
-function EvaCard() {
+function EvaCard({ tab }: { tab?: string }) {
+  const [quote, setQuote] = useState(() => getEvaQuote(tab));
+  const [photo, setPhoto] = useState(() => getRandomEvaPhoto());
+  const [key, setKey] = useState(0);
+
+  function newQuote() {
+    setQuote(getEvaQuote(tab));
+    setPhoto(getRandomEvaPhoto());
+    setKey((k) => k + 1);
+  }
+
   return (
     <Panel title="Recado da Eva Flor" icon={<Sparkles size={18} />}>
       <div className="flex items-start gap-3">
-        <Image src={evaAvatar} alt="Eva Flor" width={64} height={64} className="size-16 shrink-0 rounded-2xl object-cover" />
-        <div>
-          <p className="text-sm font-semibold text-[#b94075]">Autora oficial dos lembretes fofinhos</p>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            Ela aparece de vez em quando quando voces navegam, salvam informacoes ou baixam CSV. E so um carinho visual,
-            sem atrapalhar o controle financeiro.
+        <button
+          onClick={newQuote}
+          className="eva-wiggle shrink-0 overflow-hidden rounded-2xl border-2 border-[#ead7dd] focus:outline-none focus:ring-2 focus:ring-[#d96b9d]"
+          title="Clique para novo recado"
+          style={{ width: 64, height: 64 }}
+        >
+          <Image
+            key={photo}
+            src={photo}
+            alt="Eva Flor"
+            width={64}
+            height={64}
+            className="size-16 object-cover transition duration-300 hover:scale-105"
+          />
+        </button>
+        <div className="flex-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#b94075]">Eva Flor · fiscal fofinha</p>
+          <p key={key} className="eva-enter mt-2 text-sm leading-6 text-muted">
+            {quote}
           </p>
+          <button
+            onClick={newQuote}
+            className="mt-3 flex items-center gap-1.5 rounded-lg border border-[#ead7dd] bg-[#fff0f5] px-2.5 py-1 text-xs font-semibold text-[#b94075] hover:bg-[#ffe0ea] transition"
+          >
+            <RefreshCcw size={11} />
+            Novo recado
+          </button>
         </div>
       </div>
     </Panel>
   );
 }
 
-function EvaBubble({ bubble }: { bubble: { id: number; quote: string } | null }) {
+function EvaBubble({ bubble }: { bubble: { id: number; quote: string; photo: string } | null }) {
   if (!bubble) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-4 bottom-4 z-50 sm:left-auto sm:right-5 sm:max-w-sm">
+    <div key={bubble.id} className="eva-enter pointer-events-none fixed inset-x-4 bottom-4 z-50 sm:left-auto sm:right-5 sm:max-w-sm">
       <div className="ml-auto flex max-w-sm items-end gap-3 rounded-2xl border border-[#ead7dd] bg-white p-3 shadow-[0_18px_60px_rgba(73,37,58,0.18)]">
-        <Image src={evaAvatar} alt="Eva Flor" width={56} height={56} className="size-14 shrink-0 rounded-2xl object-cover" />
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#b94075]">Eva Flor</p>
+        <div className="shrink-0 overflow-hidden rounded-2xl border-2 border-[#ffe0ea]" style={{ width: 56, height: 56 }}>
+          <Image
+            src={bubble.photo}
+            alt="Eva Flor"
+            width={56}
+            height={56}
+            className="size-14 object-cover"
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#b94075]">Eva Flor 🐾</p>
           <p className="mt-1 text-sm leading-5 text-foreground">{bubble.quote}</p>
         </div>
       </div>
