@@ -74,6 +74,14 @@ export const evaQuotesByTab: Record<string, string[]> = {
     "Eu estaria latindo de empolgação, mas fingi que sou profissional. Lançamento aceito.",
     "Registrado. Esse casal organizado me enche de orgulho de cachorra.",
   ],
+  import: [
+    "Importar fatura é como farejar um quintal inteiro. Vamos por partes e com calma.",
+    "Eu trouxe os lançamentos para a prévia. Agora vocês conferem antes de guardar.",
+    "Parcelas detectadas, valores na mesa. A Eva recomenda revisar com carinho.",
+    "CSV organizado deixa meu coraçãozinho financeiro em paz.",
+    "PDF lido. Se algo parecer estranho, ajustem antes de salvar. Eu fico de olho.",
+    "Fatura importada com cuidado vale por vários lançamentos manuais.",
+  ],
   analysis: [
     "Fui olhar os gráficos. Muito número, mas eu confio em vocês para interpretar.",
     "Análise financeira é como farejar pista: tem que ser cuidadoso e ir fundo.",

@@ -12,16 +12,26 @@ import {
   Transaction,
   TransactionType,
 } from "@/lib/finance";
+import {
+  csvImportTemplate,
+  ImportedTransactionDraft,
+  markDuplicates,
+  parseImportText,
+} from "@/lib/importers";
 import { createClient } from "@/lib/supabase/client";
 import {
   ArrowDownToLine,
+  AlertTriangle,
   BarChart3,
   Bell,
   CalendarDays,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   CreditCard,
   Download,
+  FileSpreadsheet,
+  FileUp,
   Heart,
   LineChart as LineChartIcon,
   Loader2,
@@ -37,6 +47,7 @@ import {
   Target,
   Trash2,
   TrendingUp,
+  Upload,
   Wallet,
   X,
 } from "lucide-react";
@@ -71,7 +82,7 @@ type Props = {
   setupMissing?: boolean;
 };
 
-type Tab = "overview" | "entry" | "analysis" | "goals" | "assets" | "groceries" | "security";
+type Tab = "overview" | "entry" | "import" | "analysis" | "goals" | "assets" | "groceries" | "security";
 
 const today = new Date().toISOString().slice(0, 10);
 const palette = ["#d96b9d", "#2f9f90", "#d69b35", "#5f6fb2", "#cb6b55", "#668c45", "#8a5f9f"];
@@ -136,6 +147,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
   const [groceryItems, setGroceryItems] = useState<GroceryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState("");
   const [form, setForm] = useState(initialForm);
   const [quickForm, setQuickForm] = useState(initialQuickForm);
@@ -143,6 +155,8 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
   const [assetForm, setAssetForm] = useState(initialAssetForm);
   const [groceryForm, setGroceryForm] = useState(initialGroceryForm);
   const [evaBubble, setEvaBubble] = useState<{ id: number; quote: string; photo: string } | null>(null);
+  const [importRows, setImportRows] = useState<ImportedTransactionDraft[]>([]);
+  const [importReport, setImportReport] = useState("");
   const lastEvaAt = useRef(0);
 
   // Filtros de transações
@@ -541,6 +555,93 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     );
   }
 
+  async function handleImportFile(file: File | null) {
+    if (!file) return;
+
+    setImporting(true);
+    setImportReport("");
+    setMessage("");
+
+    try {
+      let text = "";
+
+      if (file.name.toLowerCase().endsWith(".pdf")) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const response = await fetch("/api/import/pdf-text", { method: "POST", body: formData });
+        const payload = (await response.json()) as { text?: string; message?: string };
+
+        if (!response.ok) {
+          throw new Error(payload.message ?? "Não foi possível ler o PDF.");
+        }
+
+        text = payload.text ?? "";
+      } else {
+        text = await file.text();
+      }
+
+      const rows = markDuplicates(parseImportText(text, file.name), transactions);
+      setImportRows(rows);
+      setImportReport(
+        rows.length
+          ? `${rows.length} lançamento(s) encontrados. Revise a prévia antes de salvar.`
+          : "Não encontrei lançamentos nesse arquivo. Para PDF escaneado ou imagem, será preciso OCR dedicado.",
+      );
+      summonEva("import");
+    } catch (error) {
+      setImportRows([]);
+      setImportReport(error instanceof Error ? error.message : "Não foi possível importar o arquivo.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  function updateImportRow(id: string, patch: Partial<ImportedTransactionDraft>) {
+    setImportRows((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+  }
+
+  async function saveImportedTransactions() {
+    if (!supabase || !couple) return;
+    const selectedRows = importRows.filter((row) => row.selected);
+
+    if (!selectedRows.length) {
+      setImportReport("Selecione pelo menos um lançamento para salvar.");
+      return;
+    }
+
+    setImporting(true);
+    setMessage("");
+
+    const payload = selectedRows.map((row) => ({
+      couple_id: couple.id,
+      created_by: null,
+      occurred_on: row.occurred_on,
+      description: row.description.trim(),
+      amount: Number(row.amount),
+      transaction_type: row.transaction_type,
+      category: row.category,
+      payment_method: row.payment_method,
+      installments_total: Number(row.installments_total) || 1,
+      installment_number: Number(row.installment_number) || 1,
+      is_fixed: row.is_fixed,
+      is_recurring: row.is_recurring,
+      notes: row.notes || `Importado de ${row.source}`,
+    }));
+
+    const { error } = await supabase.from("transactions").insert(payload);
+
+    if (error) {
+      setImportReport(error.message);
+    } else {
+      setImportRows([]);
+      setImportReport(`${selectedRows.length} lançamento(s) importados com sucesso.`);
+      await loadData();
+      summonEva("import");
+    }
+
+    setImporting(false);
+  }
+
   async function saveGoal() {
     if (!supabase || !couple) return;
     const target = Number(goalForm.target_amount.replace(",", "."));
@@ -743,6 +844,17 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     summonEva("overview");
   }
 
+  function downloadImportTemplate() {
+    const blob = new Blob([`\uFEFF${csvImportTemplate()}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "modelo-importacao-rarecouple.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+    summonEva("import");
+  }
+
   if (setupMissing) {
     return (
       <main className="grid min-h-screen place-items-center p-6">
@@ -786,6 +898,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
         <nav className="flex gap-2 overflow-x-auto pb-2">
           <TabButton active={activeTab === "overview"} onClick={() => switchTab("overview")} label="Visão geral" icon={<BarChart3 size={17} />} />
           <TabButton active={activeTab === "entry"} onClick={() => switchTab("entry")} label="Lançar" icon={<Plus size={17} />} />
+          <TabButton active={activeTab === "import"} onClick={() => switchTab("import")} label="Importar" icon={<FileUp size={17} />} />
           <TabButton active={activeTab === "analysis"} onClick={() => switchTab("analysis")} label="Análises" icon={<Sparkles size={17} />} />
           <TabButton active={activeTab === "goals"} onClick={() => switchTab("goals")} label="Metas" icon={<Target size={17} />} />
           <TabButton active={activeTab === "assets"} onClick={() => switchTab("assets")} label="Bens" icon={<Package size={17} />} />
@@ -904,6 +1017,24 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
               </Panel>
               <EvaCard tab="entry" />
             </div>
+          </div>
+        ) : null}
+
+        {activeTab === "import" ? (
+          <div className="mt-4 grid gap-5 lg:grid-cols-[390px_minmax(0,1fr)]">
+            <ImportPanel
+              importing={importing}
+              report={importReport}
+              rows={importRows}
+              onFile={handleImportFile}
+              onDownloadTemplate={downloadImportTemplate}
+              onSave={saveImportedTransactions}
+            />
+            <ImportPreview
+              rows={importRows}
+              importing={importing}
+              onChange={updateImportRow}
+            />
           </div>
         ) : null}
 
@@ -1482,6 +1613,169 @@ function GroceryForm({
           {saving ? <Loader2 className="animate-spin" size={18} /> : <ShoppingBasket size={18} />}
           Salvar item
         </button>
+      </div>
+    </Panel>
+  );
+}
+
+function ImportPanel({
+  importing,
+  report,
+  rows,
+  onFile,
+  onDownloadTemplate,
+  onSave,
+}: {
+  importing: boolean;
+  report: string;
+  rows: ImportedTransactionDraft[];
+  onFile: (file: File | null) => void;
+  onDownloadTemplate: () => void;
+  onSave: () => void;
+}) {
+  const selected = rows.filter((row) => row.selected).length;
+  const duplicates = rows.filter((row) => row.duplicate).length;
+
+  return (
+    <div className="grid content-start gap-5">
+      <Panel title="Importar fatura ou planilha" icon={<FileUp size={18} />}>
+        <div className="grid gap-4">
+          <label className="grid cursor-pointer place-items-center rounded-2xl border border-dashed border-[#d96b9d] bg-[#fff8f4] p-6 text-center hover:bg-[#fff0f5]">
+            <input
+              className="sr-only"
+              type="file"
+              accept=".csv,.ofx,.txt,.pdf,text/csv,application/pdf"
+              onChange={(event) => onFile(event.target.files?.[0] ?? null)}
+            />
+            <Upload size={26} className="text-[#b94075]" />
+            <span className="mt-3 text-sm font-semibold">Escolher CSV, OFX, TXT ou PDF</span>
+            <span className="mt-1 text-xs leading-5 text-muted">
+              CSV do Nubank funciona melhor. PDF precisa ter texto selecionável; imagem escaneada ainda precisa de OCR dedicado.
+            </span>
+          </label>
+
+          <button
+            className="flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-semibold hover:border-accent"
+            onClick={onDownloadTemplate}
+          >
+            <FileSpreadsheet size={17} />
+            Baixar modelo CSV
+          </button>
+
+          {report ? (
+            <div className="rounded-2xl border border-border bg-white p-3 text-sm leading-6 text-muted">
+              {report}
+              {duplicates ? <span className="block text-[#b94075]">{duplicates} possível(is) duplicado(s) foram desmarcados.</span> : null}
+            </div>
+          ) : null}
+
+          <button
+            className="flex h-12 items-center justify-center gap-2 rounded-xl bg-accent px-4 font-semibold text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={importing || selected === 0}
+            onClick={onSave}
+          >
+            {importing ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
+            Salvar {selected || ""} lançamento{selected === 1 ? "" : "s"}
+          </button>
+        </div>
+      </Panel>
+
+      <Panel title="Como organizar as parcelas" icon={<CreditCard size={18} />}>
+        <div className="grid gap-3 text-sm leading-6 text-muted">
+          <p>Quando o arquivo trouxer algo como 1/10, 02/03 ou colunas de parcela, o RareCouple já preenche parcela atual e total.</p>
+          <p>Antes de salvar, revise categoria, pagamento e valor. Assim a fatura entra limpa no dashboard e no CSV.</p>
+        </div>
+      </Panel>
+
+      <EvaCard tab="import" />
+    </div>
+  );
+}
+
+function ImportPreview({
+  rows,
+  importing,
+  onChange,
+}: {
+  rows: ImportedTransactionDraft[];
+  importing: boolean;
+  onChange: (id: string, patch: Partial<ImportedTransactionDraft>) => void;
+}) {
+  if (!rows.length) {
+    return (
+      <Panel title="Prévia da importação" icon={<FileSpreadsheet size={18} />}>
+        <div className="rounded-2xl border border-dashed border-border bg-white p-6 text-sm leading-6 text-muted">
+          Importe uma fatura ou use o modelo CSV. A prévia aparece aqui para você conferir antes de gravar no app.
+        </div>
+      </Panel>
+    );
+  }
+
+  return (
+    <Panel title={`Prévia da importação (${rows.length})`} icon={<FileSpreadsheet size={18} />}>
+      <div className="grid gap-3">
+        {rows.map((row) => (
+          <div key={row.id} className={`rounded-2xl border p-3 ${row.duplicate ? "border-[#f2b6c9] bg-[#fff0f5]" : "border-border bg-white"}`}>
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <label className="flex items-center gap-2 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  checked={row.selected}
+                  disabled={importing}
+                  onChange={(event) => onChange(row.id, { selected: event.target.checked })}
+                />
+                Importar
+              </label>
+              <div className="flex items-center gap-2 text-xs text-muted">
+                {row.duplicate ? <AlertTriangle size={14} className="text-[#b94075]" /> : null}
+                {row.confidence}% confiança
+              </div>
+            </div>
+
+            <div className="grid gap-2 md:grid-cols-[130px_minmax(180px,1fr)_120px]">
+              <label className="label">
+                Data
+                <input className="field" type="date" value={row.occurred_on} onChange={(event) => onChange(row.id, { occurred_on: event.target.value })} />
+              </label>
+              <label className="label">
+                Descrição
+                <input className="field" value={row.description} onChange={(event) => onChange(row.id, { description: event.target.value })} />
+              </label>
+              <label className="label">
+                Valor
+                <input className="field" inputMode="decimal" value={row.amount} onChange={(event) => onChange(row.id, { amount: event.target.value })} />
+              </label>
+            </div>
+
+            <div className="mt-2 grid gap-2 md:grid-cols-4">
+              <Select label="Categoria" value={row.category} options={categories} onChange={(value) => onChange(row.id, { category: value })} />
+              <Select label="Pagamento" value={row.payment_method} options={paymentMethods} onChange={(value) => onChange(row.id, { payment_method: value })} />
+              <label className="label">
+                Parcela atual
+                <input className="field" type="number" min="1" value={row.installment_number} onChange={(event) => onChange(row.id, { installment_number: event.target.value })} />
+              </label>
+              <label className="label">
+                Total parcelas
+                <input className="field" type="number" min="1" value={row.installments_total} onChange={(event) => onChange(row.id, { installments_total: event.target.value })} />
+              </label>
+            </div>
+
+            <div className="mt-2 grid gap-2 md:grid-cols-[1fr_1fr_2fr]">
+              <Select
+                label="Tipo"
+                value={row.transaction_type}
+                options={["expense", "income", "investment", "transfer"]}
+                labels={typeLabel}
+                onChange={(value) => onChange(row.id, { transaction_type: value as TransactionType })}
+              />
+              <Check label="Recorrente" checked={row.is_recurring} onChange={(value) => onChange(row.id, { is_recurring: value })} />
+              <label className="label">
+                Observações
+                <input className="field" value={row.notes} onChange={(event) => onChange(row.id, { notes: event.target.value })} />
+              </label>
+            </div>
+          </div>
+        ))}
       </div>
     </Panel>
   );
