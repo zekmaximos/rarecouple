@@ -1,6 +1,5 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
 import { Eye, EyeOff, Heart, Loader2, Mail, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
@@ -17,18 +16,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const supabase = createClient();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
     setLoading(true);
-
-    if (!supabase) {
-      setMessage("Configure o Supabase no arquivo .env.local antes de entrar.");
-      setLoading(false);
-      return;
-    }
 
     const normalizedEmail = email.trim().toLowerCase();
 
@@ -38,13 +30,15 @@ export default function LoginPage() {
       return;
     }
 
-    const result = await supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
+    const result = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: normalizedEmail, password }),
     });
 
-    if (result.error) {
-      setMessage(result.error.message);
+    if (!result.ok) {
+      const data = (await result.json()) as { message?: string };
+      setMessage(data.message ?? "Usuario ou senha invalidos.");
       setLoading(false);
       return;
     }

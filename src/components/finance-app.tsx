@@ -55,13 +55,9 @@ type Couple = {
   invite_code: string;
 };
 
-type Membership = {
-  couple_id: string;
-  couples: Couple | Couple[];
-};
-
 type Props = {
   userEmail: string;
+  userName: string;
   setupMissing?: boolean;
 };
 
@@ -120,7 +116,7 @@ const initialGroceryForm = {
   notes: "",
 };
 
-export function FinanceApp({ userEmail, setupMissing = false }: Props) {
+export function FinanceApp({ userEmail, userName, setupMissing = false }: Props) {
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [couple, setCouple] = useState<Couple | null>(null);
@@ -315,57 +311,25 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
     setLoading(true);
     setMessage("");
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const { data: foundSharedCouple, error: sharedCoupleError } = await supabase
+      .from("couples")
+      .select("id, name, invite_code")
+      .eq("name", "RareCouple")
+      .limit(1)
+      .maybeSingle();
 
-    if (userError || !user) {
-      window.location.href = "/login";
-      return;
-    }
+    let sharedCouple = foundSharedCouple;
 
-    const { data: membershipRows, error: membershipError } = await supabase
-      .from("couple_members")
-      .select("couple_id, couples(id, name, invite_code)")
-      .eq("user_id", user.id)
-      .limit(1);
-
-    let memberships = (membershipRows ?? []) as Membership[];
-
-    if (membershipError) {
-      setMessage(membershipError.message);
+    if (sharedCoupleError) {
+      setMessage(`${sharedCoupleError.message}. Confira se a migration 004 foi aplicada no Supabase.`);
       setLoading(false);
       return;
     }
 
-    if (!memberships.length) {
-      const { data: sharedCouple } = await supabase
-        .from("couples")
-        .select("id, name, invite_code")
-        .eq("name", "RareCouple")
-        .limit(1)
-        .maybeSingle();
-
-      if (sharedCouple) {
-        const { error: joinError } = await supabase
-          .from("couple_members")
-          .insert({ couple_id: sharedCouple.id, user_id: user.id, role: "member" });
-
-        if (joinError) {
-          setMessage(joinError.message);
-          setLoading(false);
-          return;
-        }
-
-        memberships = [{ couple_id: sharedCouple.id, couples: sharedCouple as Couple }];
-      }
-    }
-
-    if (!memberships.length) {
+    if (!sharedCouple) {
       const { data: createdCouple, error: coupleError } = await supabase
         .from("couples")
-        .insert({ name: "RareCouple", owner_id: user.id })
+        .insert({ name: "RareCouple", owner_id: null })
         .select("id, name, invite_code")
         .single();
 
@@ -375,25 +339,12 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
         return;
       }
 
-      const { error: memberError } = await supabase
-        .from("couple_members")
-        .insert({ couple_id: createdCouple.id, user_id: user.id, role: "owner" });
-
-      if (memberError) {
-        setMessage(memberError.message);
-        setLoading(false);
-        return;
-      }
-
-      memberships = [{ couple_id: createdCouple.id, couples: createdCouple as Couple }];
+      sharedCouple = createdCouple as Couple;
     }
 
-    const selectedCouple = Array.isArray(memberships[0].couples)
-      ? memberships[0].couples[0]
-      : memberships[0].couples;
-    setCouple(selectedCouple as Couple);
+    setCouple(sharedCouple as Couple);
 
-    const coupleId = memberships[0].couple_id;
+    const coupleId = sharedCouple.id;
     const [transactionResult, goalResult, assetResult, groceryResult] = await Promise.all([
       supabase
         .from("transactions")
@@ -469,13 +420,9 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
     setSaving(true);
     setMessage("");
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
     const { error } = await supabase.from("transactions").insert({
       couple_id: couple.id,
-      created_by: user?.id,
+      created_by: null,
       occurred_on: values.occurred_on,
       description: values.description.trim(),
       amount,
@@ -525,10 +472,9 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
 
     setSaving(true);
     setMessage("");
-    const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase.from("financial_goals").insert({
       couple_id: couple.id,
-      created_by: user?.id,
+      created_by: null,
       owner_label: goalForm.owner_label,
       title: goalForm.title.trim(),
       target_amount: target,
@@ -558,10 +504,9 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
 
     setSaving(true);
     setMessage("");
-    const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase.from("assets").insert({
       couple_id: couple.id,
-      created_by: user?.id,
+      created_by: null,
       name: assetForm.name.trim(),
       asset_type: assetForm.asset_type,
       estimated_value: estimated,
@@ -591,10 +536,9 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
 
     setSaving(true);
     setMessage("");
-    const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase.from("grocery_items").insert({
       couple_id: couple.id,
-      created_by: user?.id,
+      created_by: null,
       purchased_on: groceryForm.purchased_on,
       item_name: groceryForm.item_name.trim(),
       category: groceryForm.category,
@@ -614,7 +558,7 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
   }
 
   async function signOut() {
-    await supabase?.auth.signOut();
+    await fetch("/api/logout", { method: "POST" });
     window.location.href = "/login";
   }
 
@@ -689,7 +633,7 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
             <div>
               <p className="text-sm font-semibold text-accent">RareCouple</p>
               <h1 className="text-2xl font-semibold leading-tight">Painel financeiro compartilhado</h1>
-              <p className="break-all text-sm text-muted">{userEmail}</p>
+              <p className="break-all text-sm text-muted">{userName} · {userEmail}</p>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
@@ -940,10 +884,10 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
           <div className="mt-4 grid gap-5 lg:grid-cols-[1fr_0.9fr]">
             <Panel title="Acesso exclusivo" icon={<ShieldCheck size={18} />}>
               <div className="grid gap-3">
-                <SecurityItem title="Dois emails, duas contas" text="Crie ou convide apenas o seu email e o email da sua esposa no Supabase Auth." done />
-                <SecurityItem title="Desative cadastro publico depois" text="Depois que os dois acessos estiverem criados, desative novas inscricoes no painel do Supabase." />
-                <SecurityItem title="URLs de confirmacao" text="Em Supabase Auth > URL Configuration, use https://rarecouple.vercel.app como Site URL e Redirect URL." />
-                <SecurityItem title="Banco com RLS" text="As tabelas usam Row Level Security para separar os dados da conta compartilhada." done />
+                <SecurityItem title="Dois acessos internos" text="Somente Samuel e Stephanie entram com os identificadores definidos no app." done />
+                <SecurityItem title="Sem criacao publica" text="A tela nao cria contas e nao envia email; ela abre uma sessao privada no proprio app." done />
+                <SecurityItem title="Senha compartilhada" text="A senha atual foi configurada conforme combinado. Troque quando quiser aumentar a seguranca." />
+                <SecurityItem title="Casa unica" text="Depois do login, os dois perfis veem a mesma casa financeira RareCouple." done />
               </div>
             </Panel>
             <Panel title="Conta compartilhada" icon={<Heart size={18} />}>
@@ -951,8 +895,7 @@ export function FinanceApp({ userEmail, setupMissing = false }: Props) {
                 <p>Casa: <strong className="text-foreground">{couple?.name ?? "RareCouple"}</strong></p>
                 <p>Codigo interno: <strong className="font-mono text-foreground">{couple?.invite_code ?? "pendente"}</strong></p>
                 <p>
-                  Para unir a segunda conta ao mesmo painel, ela precisa estar em `couple_members` com o mesmo
-                  `couple_id`. Posso automatizar isso numa proxima etapa com convite por codigo.
+                  Os dois acessos internos usam a mesma casa financeira. Nao depende de email real nem confirmacao.
                 </p>
               </div>
             </Panel>

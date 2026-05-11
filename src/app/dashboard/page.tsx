@@ -1,22 +1,13 @@
 import { FinanceApp } from "@/components/finance-app";
-import { createClient } from "@/lib/supabase/server";
+import { getAppProfile } from "@/lib/app-auth";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
+  const profile = await getAppProfile();
 
-  if (!supabase) {
-    return <FinanceApp userEmail="configuracao@pendente.local" setupMissing />;
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!profile) {
     redirect("/login");
   }
 
-  return <FinanceApp userEmail={user.email ?? "usuario"} />;
+  return <FinanceApp userEmail={profile.email} userName={profile.name} />;
 }
-
