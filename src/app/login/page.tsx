@@ -1,6 +1,8 @@
 "use client";
 
+import { evaAvatar, evaQuotes, memories } from "@/lib/brand-assets";
 import { Eye, EyeOff, Heart, Loader2, Mail, ShieldCheck } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
@@ -16,6 +18,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const loginMemories = [memories[0], memories[2], memories[4], memories[7]];
+  const evaLine = evaQuotes[2];
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -49,10 +53,20 @@ export default function LoginPage() {
 
   return (
     <main className="grid min-h-screen bg-[#fff8f4] lg:grid-cols-[1.05fr_0.95fr]">
-      <section className="relative flex min-h-[42vh] flex-col justify-between overflow-hidden bg-[#853f66] p-6 text-white sm:p-10 lg:min-h-screen">
-        <div className="pointer-events-none absolute right-[-80px] top-[-80px] size-56 rounded-full bg-[#f5c4d9]/35 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-24 left-[-90px] size-64 rounded-full bg-[#8dd7ca]/30 blur-3xl" />
-        <div className="flex items-center gap-3">
+      <section className="relative flex min-h-[48vh] flex-col justify-between overflow-hidden bg-[#783b5e] p-6 text-white sm:p-10 lg:min-h-screen">
+        <div className="pointer-events-none absolute inset-0 opacity-20">
+          <Image
+            src="/memories/couple-sunny.jpeg"
+            alt=""
+            fill
+            priority
+            sizes="52vw"
+            className="object-cover"
+            aria-hidden="true"
+          />
+        </div>
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(82,38,67,0.94),rgba(120,59,94,0.72)_52%,rgba(47,159,144,0.45))]" />
+        <div className="relative z-10 flex items-center gap-3">
           <div className="grid size-11 place-items-center rounded-2xl bg-white text-[#853f66] shadow-sm">
             <Heart size={22} fill="currentColor" />
           </div>
@@ -61,7 +75,7 @@ export default function LoginPage() {
             <p className="text-sm text-white/75">Financas do casal</p>
           </div>
         </div>
-        <div className="relative max-w-xl py-12">
+        <div className="relative z-10 max-w-xl py-12">
           <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-[#ffd6e7]">
             Privado, leve e organizado
           </p>
@@ -73,9 +87,25 @@ export default function LoginPage() {
             padronizado desde a primeira versao.
           </p>
         </div>
-        <div className="relative flex items-center gap-2 text-sm text-white/70">
-          <ShieldCheck size={17} />
-          Acesso pensado para apenas duas contas autorizadas.
+        <div className="relative z-10 grid gap-4">
+          <div className="grid grid-cols-4 gap-2 sm:max-w-xl">
+            {loginMemories.map((memory) => (
+              <div key={memory.src} className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-white/18 bg-white/10 shadow-xl">
+                <Image src={memory.src} alt={memory.alt} fill sizes="(max-width: 1024px) 25vw, 12vw" className="object-cover" />
+              </div>
+            ))}
+          </div>
+          <div className="flex max-w-xl items-start gap-3 rounded-2xl border border-white/18 bg-white/12 p-3 text-sm text-white shadow-xl backdrop-blur">
+            <Image src={evaAvatar} alt="Eva Flor" width={48} height={48} className="size-12 shrink-0 rounded-full object-cover ring-2 ring-white/40" />
+            <div>
+              <p className="font-semibold">Eva Flor</p>
+              <p className="mt-1 text-white/78">{evaLine}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-white/72">
+            <ShieldCheck size={17} />
+            Acesso pensado para apenas duas contas autorizadas.
+          </div>
         </div>
       </section>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { evaAvatar, evaQuotes, memories } from "@/lib/brand-assets";
 import {
   Asset,
   categories,
@@ -33,7 +34,8 @@ import {
   Target,
   Wallet,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -132,6 +134,25 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
   const [goalForm, setGoalForm] = useState(initialGoalForm);
   const [assetForm, setAssetForm] = useState(initialAssetForm);
   const [groceryForm, setGroceryForm] = useState(initialGroceryForm);
+  const [evaBubble, setEvaBubble] = useState<{ id: number; quote: string } | null>(null);
+  const lastEvaAt = useRef(0);
+
+  function summonEva() {
+    const quote = evaQuotes[Math.floor(Math.random() * evaQuotes.length)];
+    setEvaBubble({ id: Date.now(), quote });
+  }
+
+  function nudgeEva() {
+    const now = Date.now();
+    if (now - lastEvaAt.current < 14000) return;
+    lastEvaAt.current = now;
+    summonEva();
+  }
+
+  function switchTab(tab: Tab) {
+    setActiveTab(tab);
+    summonEva();
+  }
 
   const totals = useMemo(() => {
     const income = sum(transactions.filter((item) => item.transaction_type === "income"));
@@ -392,6 +413,13 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
   }, []);
 
   useEffect(() => {
+    if (!evaBubble) return;
+
+    const timeout = window.setTimeout(() => setEvaBubble(null), 6800);
+    return () => window.clearTimeout(timeout);
+  }, [evaBubble]);
+
+  useEffect(() => {
     if (!supabase || !couple) return;
 
     const channel = supabase
@@ -441,6 +469,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     } else {
       reset();
       await loadData();
+      summonEva();
     }
 
     setSaving(false);
@@ -488,6 +517,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     } else {
       setGoalForm(initialGoalForm);
       await loadData();
+      summonEva();
     }
     setSaving(false);
   }
@@ -520,6 +550,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     } else {
       setAssetForm(initialAssetForm);
       await loadData();
+      summonEva();
     }
     setSaving(false);
   }
@@ -553,6 +584,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     } else {
       setGroceryForm(initialGroceryForm);
       await loadData();
+      summonEva();
     }
     setSaving(false);
   }
@@ -606,6 +638,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     link.download = `rarecouple-financas-${today}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+    summonEva();
   }
 
   if (setupMissing) {
@@ -623,7 +656,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
   }
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background" onPointerMove={nudgeEva}>
       <header className="border-b border-[#ead7dd] bg-[#fff8f4]/92 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-3">
@@ -636,23 +669,26 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
               <p className="break-all text-sm text-muted">{userName} · {userEmail}</p>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
-            <IconButton label="Atualizar" onClick={loadData} icon={<RefreshCcw size={17} />} />
-            <IconButton label="CSV" onClick={downloadCsv} icon={<Download size={17} />} />
-            <IconButton label="Sair" onClick={signOut} icon={<LogOut size={17} />} />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <HeaderMemoryStack />
+            <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
+              <IconButton label="Atualizar" onClick={loadData} icon={<RefreshCcw size={17} />} />
+              <IconButton label="CSV" onClick={downloadCsv} icon={<Download size={17} />} />
+              <IconButton label="Sair" onClick={signOut} icon={<LogOut size={17} />} />
+            </div>
           </div>
         </div>
       </header>
 
       <section className="mx-auto max-w-7xl px-4 py-5 sm:px-6">
         <nav className="flex gap-2 overflow-x-auto pb-2">
-          <TabButton active={activeTab === "overview"} onClick={() => setActiveTab("overview")} label="Visao geral" icon={<BarChart3 size={17} />} />
-          <TabButton active={activeTab === "entry"} onClick={() => setActiveTab("entry")} label="Lancar" icon={<Plus size={17} />} />
-          <TabButton active={activeTab === "analysis"} onClick={() => setActiveTab("analysis")} label="Analises" icon={<Sparkles size={17} />} />
-          <TabButton active={activeTab === "goals"} onClick={() => setActiveTab("goals")} label="Metas" icon={<Target size={17} />} />
-          <TabButton active={activeTab === "assets"} onClick={() => setActiveTab("assets")} label="Bens" icon={<Package size={17} />} />
-          <TabButton active={activeTab === "groceries"} onClick={() => setActiveTab("groceries")} label="Feira" icon={<ShoppingBasket size={17} />} />
-          <TabButton active={activeTab === "security"} onClick={() => setActiveTab("security")} label="Seguranca" icon={<ShieldCheck size={17} />} />
+          <TabButton active={activeTab === "overview"} onClick={() => switchTab("overview")} label="Visao geral" icon={<BarChart3 size={17} />} />
+          <TabButton active={activeTab === "entry"} onClick={() => switchTab("entry")} label="Lancar" icon={<Plus size={17} />} />
+          <TabButton active={activeTab === "analysis"} onClick={() => switchTab("analysis")} label="Analises" icon={<Sparkles size={17} />} />
+          <TabButton active={activeTab === "goals"} onClick={() => switchTab("goals")} label="Metas" icon={<Target size={17} />} />
+          <TabButton active={activeTab === "assets"} onClick={() => switchTab("assets")} label="Bens" icon={<Package size={17} />} />
+          <TabButton active={activeTab === "groceries"} onClick={() => switchTab("groceries")} label="Feira" icon={<ShoppingBasket size={17} />} />
+          <TabButton active={activeTab === "security"} onClick={() => switchTab("security")} label="Seguranca" icon={<ShieldCheck size={17} />} />
         </nav>
 
         {message ? <p className="mt-3 rounded-2xl bg-[#fff4d8] p-3 text-sm text-[#6b4b09]">{message}</p> : null}
@@ -719,6 +755,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
                 onSave={saveQuickTransaction}
               />
               <CouplePanel couple={couple} />
+              <MemoryPanel />
             </div>
           </div>
         ) : null}
@@ -739,6 +776,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
                   despesa fixa, recorrencia ou observacoes importantes para o CSV.
                 </p>
               </Panel>
+              <EvaCard />
             </div>
           </div>
         ) : null}
@@ -783,6 +821,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
                 <Decision title="Mes" text={`Se a projecao passar de ${money(totals.income)}, revisem despesas variaveis antes das fixas.`} />
               </div>
             </Panel>
+            <MemoryPanel wide />
           </div>
         ) : null}
 
@@ -899,10 +938,93 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
                 </p>
               </div>
             </Panel>
+            <EvaCard />
           </div>
         ) : null}
       </section>
+      <EvaBubble bubble={evaBubble} />
     </main>
+  );
+}
+
+function HeaderMemoryStack() {
+  return (
+    <div className="flex -space-x-3 self-start sm:self-auto" aria-label="Memorias do RareCouple">
+      {memories.slice(0, 4).map((memory) => (
+        <Image
+          key={memory.src}
+          src={memory.src}
+          alt={memory.alt}
+          width={40}
+          height={40}
+          className="size-10 rounded-full border-2 border-[#fff8f4] object-cover shadow-sm"
+        />
+      ))}
+    </div>
+  );
+}
+
+function MemoryPanel({ wide = false }: { wide?: boolean }) {
+  const shown = wide ? memories.slice(0, 8) : memories.slice(0, 5);
+
+  return (
+    <Panel title="A cara da casa" icon={<Heart size={18} />}>
+      <div className={`grid gap-2 ${wide ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
+        {shown.map((memory, index) => (
+          <div
+            key={memory.src}
+            className={`group relative overflow-hidden rounded-2xl border border-border bg-white ${
+              wide && index === 0 ? "sm:col-span-2 sm:row-span-2" : ""
+            }`}
+          >
+            <Image
+              src={memory.src}
+              alt={memory.alt}
+              fill
+              sizes={wide ? "(max-width: 640px) 50vw, 25vw" : "120px"}
+              className="object-cover transition duration-300 group-hover:scale-[1.03]"
+            />
+            <div className={wide && index === 0 ? "aspect-[2/1.08]" : "aspect-square"} />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+              <p className="text-xs font-semibold text-white">{memory.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+function EvaCard() {
+  return (
+    <Panel title="Recado da Eva Flor" icon={<Sparkles size={18} />}>
+      <div className="flex items-start gap-3">
+        <Image src={evaAvatar} alt="Eva Flor" width={64} height={64} className="size-16 shrink-0 rounded-2xl object-cover" />
+        <div>
+          <p className="text-sm font-semibold text-[#b94075]">Autora oficial dos lembretes fofinhos</p>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Ela aparece de vez em quando quando voces navegam, salvam informacoes ou baixam CSV. E so um carinho visual,
+            sem atrapalhar o controle financeiro.
+          </p>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+function EvaBubble({ bubble }: { bubble: { id: number; quote: string } | null }) {
+  if (!bubble) return null;
+
+  return (
+    <div className="pointer-events-none fixed inset-x-4 bottom-4 z-50 sm:left-auto sm:right-5 sm:max-w-sm">
+      <div className="ml-auto flex max-w-sm items-end gap-3 rounded-2xl border border-[#ead7dd] bg-white p-3 shadow-[0_18px_60px_rgba(73,37,58,0.18)]">
+        <Image src={evaAvatar} alt="Eva Flor" width={56} height={56} className="size-14 shrink-0 rounded-2xl object-cover" />
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#b94075]">Eva Flor</p>
+          <p className="mt-1 text-sm leading-5 text-foreground">{bubble.quote}</p>
+        </div>
+      </div>
+    </div>
   );
 }
 
