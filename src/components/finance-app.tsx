@@ -1110,7 +1110,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
                 <SecurityItem title="Dois acessos internos" text="Somente Samuel e Stephanie entram com os identificadores definidos no app." done />
                 <SecurityItem title="Sem criação pública" text="A tela não cria contas e não envia email; ela abre uma sessao privada no proprio app." done />
                 <SecurityItem title="Senha compartilhada" text="A senha atual foi configurada conforme combinado. Troque quando quiser aumentar a segurança." />
-                <SecurityItem title="Casa unica" text="Depois do login, os dois perfis veem a mesma casa financeira RareCouple." done />
+                <SecurityItem title="Casa única" text="Depois do login, os dois perfis veem a mesma casa financeira RareCouple." done />
               </div>
             </Panel>
             <Panel title="Conta compartilhada" icon={<Heart size={18} />}>
@@ -1262,12 +1262,12 @@ function QuickEntry({
   onSave: () => void;
 }) {
   return (
-    <Panel title="Lan?amento r?pido" icon={<Wallet size={18} />}>
+    <Panel title="Lançamento rápido" icon={<Wallet size={18} />}>
       <div className="grid gap-3">
         <div className="grid grid-cols-[1fr_120px] gap-3 max-[420px]:grid-cols-1">
           <label className="label">
             O que foi?
-            <input className="field" placeholder="Ex: almo?o, mercado, t?xi" value={quickForm.description} onChange={(e) => setQuickForm({ ...quickForm, description: e.target.value })} />
+            <input className="field" placeholder="Ex: almoço, mercado, táxi" value={quickForm.description} onChange={(e) => setQuickForm({ ...quickForm, description: e.target.value })} />
           </label>
           <label className="label">
             Valor
@@ -1280,7 +1280,7 @@ function QuickEntry({
         </div>
         <button className="flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-accent px-4 font-semibold text-white hover:bg-accent-strong" disabled={saving} onClick={onSave}>
           {saving ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />}
-          Salvar r?pido
+          Salvar rápido
         </button>
       </div>
     </Panel>
@@ -1299,7 +1299,7 @@ function FullEntryForm({
   onSave: () => void;
 }) {
   return (
-    <Panel title="Lan?amento completo" icon={<Plus size={18} />}>
+    <Panel title="Lançamento completo" icon={<Plus size={18} />}>
       <div className="grid gap-3">
         <label className="label">
           Descrição
@@ -1335,7 +1335,7 @@ function FullEntryForm({
           <Check label="Recorrente" checked={form.is_recurring} onChange={(value) => setForm({ ...form, is_recurring: value })} />
         </div>
         <label className="label">
-          Observa??es
+          Observações
           <textarea className="field min-h-20 resize-y" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </label>
         <button className="flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-accent px-4 font-semibold text-white hover:bg-accent-strong" disabled={saving} onClick={onSave}>
@@ -1377,8 +1377,8 @@ function GoalForm({
           </label>
         </div>
         <label className="label">
-          Acao combinada
-          <input className="field" placeholder="Ex: guardar 500 por m?s" value={goalForm.monthly_action} onChange={(e) => setGoalForm({ ...goalForm, monthly_action: e.target.value })} />
+          Ação combinada
+          <input className="field" placeholder="Ex: guardar 500 por mês" value={goalForm.monthly_action} onChange={(e) => setGoalForm({ ...goalForm, monthly_action: e.target.value })} />
         </label>
         <label className="label">
           Data alvo
@@ -1427,7 +1427,7 @@ function AssetForm({
           <input className="field" type="date" value={assetForm.acquired_on} onChange={(e) => setAssetForm({ ...assetForm, acquired_on: e.target.value })} />
         </label>
         <label className="label">
-          Observa??es
+          Observações
           <textarea className="field min-h-20 resize-y" value={assetForm.notes} onChange={(e) => setAssetForm({ ...assetForm, notes: e.target.value })} />
         </label>
         <button className="flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-accent px-4 font-semibold text-white hover:bg-accent-strong" disabled={saving} onClick={onSave}>
@@ -1588,7 +1588,7 @@ function CouplePanel({ couple }: { couple: Couple | null }) {
     <Panel title="Conta compartilhada" icon={<Heart size={18} />}>
       <div className="grid gap-2 text-sm text-muted">
         <p>Nome: <strong className="text-foreground">{couple?.name ?? "RareCouple"}</strong></p>
-        <p>C?digo: <strong className="font-mono text-foreground">{couple?.invite_code ?? "pendente"}</strong></p>
+        <p>Código: <strong className="font-mono text-foreground">{couple?.invite_code ?? "pendente"}</strong></p>
         <p>Todos os lançamentos ficam padronizados para CSV e análises futuras.</p>
       </div>
     </Panel>
