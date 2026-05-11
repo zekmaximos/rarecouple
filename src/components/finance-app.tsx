@@ -1,6 +1,6 @@
 "use client";
 
-import { evaAvatar, getEvaQuote, getRandomEvaPhoto, memories } from "@/lib/brand-assets";
+import { getEvaQuote, getRandomEvaPhoto, memories } from "@/lib/brand-assets";
 import {
   Asset,
   categories,
@@ -252,26 +252,26 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
         title: "Categoria dominante",
         value: topCategory ? `${topCategory.name}: ${concentration}%` : "Sem dados",
         detail: secondCategory
-          ? `Compare com ${secondCategory.name}; a diferenca mostra onde uma pequena mudanca mais aparece.`
-          : "Quando houver mais lancamentos, eu aponto o maior foco do mes.",
+          ? `Compare com ${secondCategory.name}; a diferença mostra onde uma pequena mudança mais aparece.`
+          : "Quando houver mais lançamentos, eu aponto o maior foco do mês.",
       },
       {
-        title: "Pressao fixa",
-        value: `${totals.fixedShare}% das saidas`,
+        title: "Pressão fixa",
+        value: `${totals.fixedShare}% das saídas`,
         detail:
           totals.fixedShare > 45
-            ? "Alerta gentil: muita despesa fixa reduz liberdade. Vale revisar assinaturas, contratos e recorrencias."
-            : "Boa folga estrutural. O controle semanal deve funcionar bem para manter o mes leve.",
+            ? "Alerta gentil: muita despesa fixa reduz liberdade. Vale revisar assinaturas, contratos e recorrências."
+            : "Boa folga estrutural. O controle semanal deve funcionar bem para manter o mês leve.",
       },
       {
-        title: "Projecao do mes",
+        title: "Projeção do mês",
         value: money(totals.projectedExpense),
-        detail: `No ritmo atual, o gasto medio diario esta em ${money(totals.dailyPace)}.`,
+        detail: `No ritmo atual, o gasto médio diário está em ${money(totals.dailyPace)}.`,
       },
       {
-        title: "Espaco flexivel",
+        title: "Espaço flexível",
         value: money(roomToBreathe),
-        detail: "Receita menos despesas fixas e investimentos. Este e o envelope mental para decisoes do dia a dia.",
+        detail: "Receita menos despesas fixas e investimentos. Este é o envelope mental para decisões do dia a dia.",
       },
     ];
   }, [byCategory, totals]);
@@ -385,7 +385,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
         .single();
 
       if (coupleError || !createdCouple) {
-        setMessage(coupleError?.message ?? "Nao foi possivel criar o casal.");
+        setMessage(coupleError?.message ?? "Não foi possível criar o casal.");
         setLoading(false);
         return;
       }
@@ -424,7 +424,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     const firstError = transactionResult.error ?? goalResult.error ?? assetResult.error ?? groceryResult.error;
 
     if (firstError) {
-      setMessage(`${firstError.message}. Execute a migration 002 no Supabase se as tabelas ainda nao existirem.`);
+      setMessage(`${firstError.message}. Execute a migration 002 no Supabase se as tabelas ainda não existirem.`);
     } else {
       setTransactions((transactionResult.data ?? []) as Transaction[]);
       setGoals((goalResult.data ?? []) as FinancialGoal[]);
@@ -449,20 +449,26 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
   }, [evaBubble]);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("rarecouple-special-dates");
-      if (stored) {
-        const dates = JSON.parse(stored) as SpecialDate[];
-        setSpecialDates(dates);
-        const todayMMDD = today.slice(5);
-        const soon = dates.find((d) => {
-          const [am, ad] = d.date.split("-").map(Number);
-          const [bm, bd] = todayMMDD.split("-").map(Number);
-          return Math.abs(am * 31 + ad - (bm * 31 + bd)) <= 3;
-        });
-        if (soon) setSpecialDateAlert(soon.label);
+    const timeout = window.setTimeout(() => {
+      try {
+        const stored = localStorage.getItem("rarecouple-special-dates");
+        if (stored) {
+          const dates = JSON.parse(stored) as SpecialDate[];
+          setSpecialDates(dates);
+          const todayMMDD = today.slice(5);
+          const soon = dates.find((d) => {
+            const [am, ad] = d.date.split("-").map(Number);
+            const [bm, bd] = todayMMDD.split("-").map(Number);
+            return Math.abs(am * 31 + ad - (bm * 31 + bd)) <= 3;
+          });
+          if (soon) setSpecialDateAlert(soon.label);
+        }
+      } catch {
+        // Ignore malformed local reminders.
       }
-    } catch { /* ignore */ }
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
   }, []);
 
   useEffect(() => {
@@ -487,7 +493,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     const amount = Number(String(values.amount).replace(",", "."));
 
     if (!values.description.trim() || !amount || amount <= 0) {
-      setMessage("Informe descricao e valor maior que zero.");
+      setMessage("Informe descrição e valor maior que zero.");
       return;
     }
 
@@ -695,7 +701,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
       "id",
       "data",
       "tipo",
-      "descricao",
+      "descrição",
       "categoria",
       "valor",
       "metodo_pagamento",
@@ -703,7 +709,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
       "parcelas_total",
       "despesa_fixa",
       "recorrente",
-      "observacoes",
+      "observações",
       "valor_assinado",
       "criado_em",
     ];
@@ -718,8 +724,8 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
         item.payment_method,
         item.installment_number,
         item.installments_total,
-        item.is_fixed ? "sim" : "nao",
-        item.is_recurring ? "sim" : "nao",
+        item.is_fixed ? "sim" : "não",
+        item.is_recurring ? "sim" : "não",
         item.notes ?? "",
         signedAmount(item).toFixed(2),
         item.created_at,
@@ -741,8 +747,8 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
     return (
       <main className="grid min-h-screen place-items-center p-6">
         <div className="max-w-2xl rounded-2xl border border-border bg-panel p-8">
-          <p className="text-sm font-semibold text-accent">Configuracao pendente</p>
-          <h1 className="mt-2 text-3xl font-semibold">RareCouple esta pronto para conectar ao Supabase.</h1>
+          <p className="text-sm font-semibold text-accent">Configuração pendente</p>
+          <h1 className="mt-2 text-3xl font-semibold">RareCouple está pronto para conectar ao Supabase.</h1>
           <p className="mt-4 text-muted">
             Configure `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
           </p>
@@ -778,13 +784,13 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
 
       <section className="mx-auto max-w-7xl px-4 py-5 sm:px-6">
         <nav className="flex gap-2 overflow-x-auto pb-2">
-          <TabButton active={activeTab === "overview"} onClick={() => switchTab("overview")} label="Visao geral" icon={<BarChart3 size={17} />} />
-          <TabButton active={activeTab === "entry"} onClick={() => switchTab("entry")} label="Lancar" icon={<Plus size={17} />} />
-          <TabButton active={activeTab === "analysis"} onClick={() => switchTab("analysis")} label="Analises" icon={<Sparkles size={17} />} />
+          <TabButton active={activeTab === "overview"} onClick={() => switchTab("overview")} label="Visão geral" icon={<BarChart3 size={17} />} />
+          <TabButton active={activeTab === "entry"} onClick={() => switchTab("entry")} label="Lançar" icon={<Plus size={17} />} />
+          <TabButton active={activeTab === "analysis"} onClick={() => switchTab("analysis")} label="Análises" icon={<Sparkles size={17} />} />
           <TabButton active={activeTab === "goals"} onClick={() => switchTab("goals")} label="Metas" icon={<Target size={17} />} />
           <TabButton active={activeTab === "assets"} onClick={() => switchTab("assets")} label="Bens" icon={<Package size={17} />} />
           <TabButton active={activeTab === "groceries"} onClick={() => switchTab("groceries")} label="Feira" icon={<ShoppingBasket size={17} />} />
-          <TabButton active={activeTab === "security"} onClick={() => switchTab("security")} label="Seguranca" icon={<ShieldCheck size={17} />} />
+          <TabButton active={activeTab === "security"} onClick={() => switchTab("security")} label="Segurança" icon={<ShieldCheck size={17} />} />
         </nav>
 
         {message ? <p className="mt-3 rounded-2xl bg-[#fff4d8] p-3 text-sm text-[#6b4b09]">{message}</p> : null}
@@ -793,7 +799,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
           <div className="mt-3 flex items-center gap-3 rounded-2xl border border-[#ead7dd] bg-[#fff0f5] p-3">
             <Bell size={18} className="shrink-0 text-[#b94075]" />
             <p className="flex-1 text-sm font-semibold text-[#91365f]">
-              🐾 Eva Flor lembra: <span className="font-bold">{specialDateAlert}</span> está chegando! Aproveitem juntos.
+              Eva Flor lembra: <span className="font-bold">{specialDateAlert}</span> está chegando! Aproveitem juntos.
             </p>
             <button onClick={() => setSpecialDateAlert(null)} className="text-[#b94075] hover:opacity-70">
               <X size={16} />
@@ -806,17 +812,17 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
             <div className="grid gap-5">
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <Metric title="Entradas" value={money(totals.income)} icon={<ArrowDownToLine size={18} />} />
-                <Metric title="Saidas" value={money(totals.expense)} icon={<CreditCard size={18} />} tone="danger" />
+                <Metric title="Saídas" value={money(totals.expense)} icon={<CreditCard size={18} />} tone="danger" />
                 <Metric title="Saldo" value={money(totals.balance)} icon={<Wallet size={18} />} />
-                <Metric title="Poupanca" value={`${totals.savingsRate}%`} icon={<PiggyBank size={18} />} />
+                <Metric title="Poupança" value={`${totals.savingsRate}%`} icon={<PiggyBank size={18} />} />
               </div>
 
               <Panel title="Resumo de gastos" icon={<CalendarDays size={18} />}>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <PeriodCard title="Hoje" value={periodSummary.daily} helper="Gasto registrado no dia" />
-                  <PeriodCard title="Semana" value={periodSummary.weekly} helper="Do domingo ate hoje" />
-                  <PeriodCard title="Mes" value={periodSummary.monthly} helper="Total do mes atual" />
-                  <PeriodCard title="Media diaria" value={periodSummary.dailyAverage} helper="Media do mes ate agora" />
+                  <PeriodCard title="Semana" value={periodSummary.weekly} helper="Do domingo até hoje" />
+                  <PeriodCard title="Mês" value={periodSummary.monthly} helper="Total do mês atual" />
+                  <PeriodCard title="Média diária" value={periodSummary.dailyAverage} helper="Média do mês até agora" />
                 </div>
               </Panel>
 
@@ -890,10 +896,10 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
                 saving={saving}
                 onSave={saveQuickTransaction}
               />
-              <Panel title="Dica de lancamento" icon={<Sparkles size={18} />}>
+              <Panel title="Dica de lançamento" icon={<Sparkles size={18} />}>
                 <p className="text-sm leading-6 text-muted">
-                  Use o lancamento rapido para gastos do dia. Use o formulario completo quando houver parcelas,
-                  despesa fixa, recorrencia ou observacoes importantes para o CSV.
+                  Use o lançamento rápido para gastos do dia. Use o formulario completo quando houver parcelas,
+                  despesa fixa, recorrência ou observações importantes para o CSV.
                 </p>
               </Panel>
               <EvaCard tab="entry" />
@@ -909,7 +915,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
               ))}
             </div>
             <section className="grid gap-5 xl:grid-cols-[1fr_0.9fr]">
-              <Panel title="Tendencia de saldo" icon={<LineChartIcon size={18} />}>
+              <Panel title="Tendência de saldo" icon={<LineChartIcon size={18} />}>
                 <ChartFrame>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={byMonth}>
@@ -925,20 +931,20 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
               <Panel title="Leitura avancada simples" icon={<TrendingUp size={18} />}>
                 <div className="grid gap-3">
                   <Ratio label="Despesa fixa" value={totals.fixedShare} helper="Idealmente abaixo de 50% das saidas." />
-                  <Ratio label="Investimentos" value={totals.investmentRate} helper="Ajuda a transformar renda em patrimonio." />
+                  <Ratio label="Investimentos" value={totals.investmentRate} helper="Ajuda a transformar renda em patrimônio." />
                   <Ratio
                     label="Parcelas"
                     value={totals.expense ? Math.round((totals.installments / totals.expense) * 100) : 0}
-                    helper="Quanto menor, mais liberdade no mes seguinte."
+                    helper="Quanto menor, mais liberdade no mês seguinte."
                   />
                 </div>
               </Panel>
             </section>
-            <Panel title="Mapa de decisoes do casal" icon={<Heart size={18} />}>
+            <Panel title="Mapa de decisões do casal" icon={<Heart size={18} />}>
               <div className="grid gap-3 md:grid-cols-3">
-                <Decision title="Hoje" text={`Registrar tudo acima de ${money(Math.max(totals.dailyPace * 0.3, 20))} para manter precisao.`} />
+                <Decision title="Hoje" text={`Registrar tudo acima de ${money(Math.max(totals.dailyPace * 0.3, 20))} para manter precisão.`} />
                 <Decision title="Semana" text="Olhar a categoria dominante antes de compras por impulso." />
-                <Decision title="Mes" text={`Se a projecao passar de ${money(totals.income)}, revisem despesas variaveis antes das fixas.`} />
+                <Decision title="Mês" text={`Se a projeção passar de ${money(totals.income)}, revisem despesas variáveis antes das fixas.`} />
               </div>
             </Panel>
             <MemoryPanel wide />
@@ -971,7 +977,7 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
             <AssetForm assetForm={assetForm} setAssetForm={setAssetForm} saving={saving} onSave={saveAsset} />
             <div className="grid content-start gap-5">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Metric title="Patrimonio listado" value={money(assetSummary.total)} icon={<Package size={18} />} />
+                <Metric title="Patrimônio listado" value={money(assetSummary.total)} icon={<Package size={18} />} />
                 <Metric title="Itens cadastrados" value={String(assets.length)} icon={<Sparkles size={18} />} />
               </div>
               <Panel title="Bens por tipo" icon={<BarChart3 size={18} />}>
@@ -1007,11 +1013,11 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
             <GroceryForm groceryForm={groceryForm} setGroceryForm={setGroceryForm} saving={saving} onSave={saveGroceryItem} />
             <div className="grid content-start gap-5">
               <div className="grid gap-3 sm:grid-cols-3">
-                <Metric title="Feira do mes" value={money(grocerySummary.total)} icon={<ShoppingBasket size={18} />} />
-                <Metric title="Itens do mes" value={String(grocerySummary.items.length)} icon={<Package size={18} />} />
-                <Metric title="Media por item" value={money(grocerySummary.items.length ? grocerySummary.total / grocerySummary.items.length : 0)} icon={<Wallet size={18} />} />
+                <Metric title="Feira do mês" value={money(grocerySummary.total)} icon={<ShoppingBasket size={18} />} />
+                <Metric title="Itens do mês" value={String(grocerySummary.items.length)} icon={<Package size={18} />} />
+                <Metric title="Média por item" value={money(grocerySummary.items.length ? grocerySummary.total / grocerySummary.items.length : 0)} icon={<Wallet size={18} />} />
               </div>
-              <Panel title="Relatorio de comida no mes" icon={<BarChart3 size={18} />}>
+              <Panel title="Relatório de comida no mês" icon={<BarChart3 size={18} />}>
                 <ChartFrame>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={grocerySummary.byCategory}>
@@ -1049,13 +1055,13 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
                     Nome da data
                     <input
                       className="field"
-                      placeholder="Ex: Aniversario do casal"
+                      placeholder="Ex: Aniversário do casal"
                       value={specialDateForm.label}
                       onChange={(e) => setSpecialDateForm({ ...specialDateForm, label: e.target.value })}
                     />
                   </label>
                   <label className="label">
-                    Mes e dia
+                    Mês e dia
                     <input
                       className="field"
                       type="date"
@@ -1102,17 +1108,17 @@ export function FinanceApp({ userEmail, userName, setupMissing = false }: Props)
             <Panel title="Acesso exclusivo" icon={<ShieldCheck size={18} />}>
               <div className="grid gap-3">
                 <SecurityItem title="Dois acessos internos" text="Somente Samuel e Stephanie entram com os identificadores definidos no app." done />
-                <SecurityItem title="Sem criacao publica" text="A tela nao cria contas e nao envia email; ela abre uma sessao privada no proprio app." done />
-                <SecurityItem title="Senha compartilhada" text="A senha atual foi configurada conforme combinado. Troque quando quiser aumentar a seguranca." />
+                <SecurityItem title="Sem criação pública" text="A tela não cria contas e não envia email; ela abre uma sessao privada no proprio app." done />
+                <SecurityItem title="Senha compartilhada" text="A senha atual foi configurada conforme combinado. Troque quando quiser aumentar a segurança." />
                 <SecurityItem title="Casa unica" text="Depois do login, os dois perfis veem a mesma casa financeira RareCouple." done />
               </div>
             </Panel>
             <Panel title="Conta compartilhada" icon={<Heart size={18} />}>
               <div className="grid gap-3 text-sm leading-6 text-muted">
                 <p>Casa: <strong className="text-foreground">{couple?.name ?? "RareCouple"}</strong></p>
-                <p>Codigo interno: <strong className="font-mono text-foreground">{couple?.invite_code ?? "pendente"}</strong></p>
+                <p>Código interno: <strong className="font-mono text-foreground">{couple?.invite_code ?? "pendente"}</strong></p>
                 <p>
-                  Os dois acessos internos usam a mesma casa financeira. Nao depende de email real nem confirmacao.
+                  Os dois acessos internos usam a mesma casa financeira. Não depende de email real nem confirmação.
                 </p>
               </div>
             </Panel>
@@ -1203,7 +1209,7 @@ function EvaCard({ tab }: { tab?: string }) {
           />
         </button>
         <div className="flex-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#b94075]">Eva Flor · fiscal fofinha</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#b94075]">Eva Flor</p>
           <p key={key} className="eva-enter mt-2 text-sm leading-6 text-muted">
             {quote}
           </p>
@@ -1236,7 +1242,7 @@ function EvaBubble({ bubble }: { bubble: { id: number; quote: string; photo: str
           />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#b94075]">Eva Flor 🐾</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#b94075]">Eva Flor</p>
           <p className="mt-1 text-sm leading-5 text-foreground">{bubble.quote}</p>
         </div>
       </div>
@@ -1256,12 +1262,12 @@ function QuickEntry({
   onSave: () => void;
 }) {
   return (
-    <Panel title="Lancamento rapido" icon={<Wallet size={18} />}>
+    <Panel title="Lan?amento r?pido" icon={<Wallet size={18} />}>
       <div className="grid gap-3">
         <div className="grid grid-cols-[1fr_120px] gap-3 max-[420px]:grid-cols-1">
           <label className="label">
             O que foi?
-            <input className="field" placeholder="Ex: almoco, mercado, taxi" value={quickForm.description} onChange={(e) => setQuickForm({ ...quickForm, description: e.target.value })} />
+            <input className="field" placeholder="Ex: almo?o, mercado, t?xi" value={quickForm.description} onChange={(e) => setQuickForm({ ...quickForm, description: e.target.value })} />
           </label>
           <label className="label">
             Valor
@@ -1274,7 +1280,7 @@ function QuickEntry({
         </div>
         <button className="flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-accent px-4 font-semibold text-white hover:bg-accent-strong" disabled={saving} onClick={onSave}>
           {saving ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />}
-          Salvar rapido
+          Salvar r?pido
         </button>
       </div>
     </Panel>
@@ -1293,10 +1299,10 @@ function FullEntryForm({
   onSave: () => void;
 }) {
   return (
-    <Panel title="Lancamento completo" icon={<Plus size={18} />}>
+    <Panel title="Lan?amento completo" icon={<Plus size={18} />}>
       <div className="grid gap-3">
         <label className="label">
-          Descricao
+          Descrição
           <input className="field" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
         </label>
         <div className="grid grid-cols-2 gap-3 max-[520px]:grid-cols-1">
@@ -1329,12 +1335,12 @@ function FullEntryForm({
           <Check label="Recorrente" checked={form.is_recurring} onChange={(value) => setForm({ ...form, is_recurring: value })} />
         </div>
         <label className="label">
-          Observacoes
+          Observa??es
           <textarea className="field min-h-20 resize-y" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </label>
         <button className="flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-accent px-4 font-semibold text-white hover:bg-accent-strong" disabled={saving} onClick={onSave}>
           {saving ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />}
-          Salvar lancamento
+          Salvar lançamento
         </button>
       </div>
     </Panel>
@@ -1372,7 +1378,7 @@ function GoalForm({
         </div>
         <label className="label">
           Acao combinada
-          <input className="field" placeholder="Ex: guardar 500 por mes" value={goalForm.monthly_action} onChange={(e) => setGoalForm({ ...goalForm, monthly_action: e.target.value })} />
+          <input className="field" placeholder="Ex: guardar 500 por m?s" value={goalForm.monthly_action} onChange={(e) => setGoalForm({ ...goalForm, monthly_action: e.target.value })} />
         </label>
         <label className="label">
           Data alvo
@@ -1405,7 +1411,7 @@ function AssetForm({
           Bem
           <input className="field" placeholder="Ex: carro, notebook, reserva" value={assetForm.name} onChange={(e) => setAssetForm({ ...assetForm, name: e.target.value })} />
         </label>
-        <Select label="Tipo" value={assetForm.asset_type} onChange={(value) => setAssetForm({ ...assetForm, asset_type: value })} options={["Veiculo", "Eletronico", "Reserva", "Investimento", "Casa", "Joia", "Outro"]} />
+        <Select label="Tipo" value={assetForm.asset_type} onChange={(value) => setAssetForm({ ...assetForm, asset_type: value })} options={["Veículo", "Eletrônico", "Reserva", "Investimento", "Casa", "Joia", "Outro"]} />
         <div className="grid grid-cols-2 gap-3 max-[420px]:grid-cols-1">
           <label className="label">
             Valor real hoje
@@ -1417,11 +1423,11 @@ function AssetForm({
           </label>
         </div>
         <label className="label">
-          Data de aquisicao
+          Data de aquisição
           <input className="field" type="date" value={assetForm.acquired_on} onChange={(e) => setAssetForm({ ...assetForm, acquired_on: e.target.value })} />
         </label>
         <label className="label">
-          Observacoes
+          Observa??es
           <textarea className="field min-h-20 resize-y" value={assetForm.notes} onChange={(e) => setAssetForm({ ...assetForm, notes: e.target.value })} />
         </label>
         <button className="flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-accent px-4 font-semibold text-white hover:bg-accent-strong" disabled={saving} onClick={onSave}>
@@ -1462,7 +1468,7 @@ function GroceryForm({
           </label>
         </div>
         <div className="grid grid-cols-2 gap-3 max-[420px]:grid-cols-1">
-          <Select label="Categoria" value={groceryForm.category} onChange={(value) => setGroceryForm({ ...groceryForm, category: value })} options={["Alimentos", "Hortifruti", "Carnes", "Laticinios", "Padaria", "Bebidas", "Delivery", "Limpeza", "Outros"]} />
+          <Select label="Categoria" value={groceryForm.category} onChange={(value) => setGroceryForm({ ...groceryForm, category: value })} options={["Alimentos", "Hortifruti", "Carnes", "Laticínios", "Padaria", "Bebidas", "Delivery", "Limpeza", "Outros"]} />
           <label className="label">
             Data
             <input className="field" type="date" value={groceryForm.purchased_on} onChange={(e) => setGroceryForm({ ...groceryForm, purchased_on: e.target.value })} />
@@ -1503,14 +1509,14 @@ function RecentTransactions({
   }
 
   return (
-    <Panel title={`Lancamentos (${transactions.length})`} icon={<CreditCard size={18} />}>
+    <Panel title={`Lançamentos (${transactions.length})`} icon={<CreditCard size={18} />}>
       {loading ? (
         <div className="flex h-40 items-center justify-center text-muted">
           <Loader2 className="animate-spin" />
         </div>
       ) : transactions.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border bg-white p-4 text-sm text-muted">
-          Nenhum lancamento encontrado para os filtros selecionados.
+          Nenhum lançamento encontrado para os filtros selecionados.
         </p>
       ) : (
         <>
@@ -1519,7 +1525,7 @@ function RecentTransactions({
               <thead className="text-muted">
                 <tr className="border-b border-border">
                   <th className="py-3">Data</th>
-                  <th>Descricao</th>
+                  <th>Descrição</th>
                   <th>Categoria</th>
                   <th>Tipo</th>
                   <th>Parcela</th>
@@ -1582,8 +1588,8 @@ function CouplePanel({ couple }: { couple: Couple | null }) {
     <Panel title="Conta compartilhada" icon={<Heart size={18} />}>
       <div className="grid gap-2 text-sm text-muted">
         <p>Nome: <strong className="text-foreground">{couple?.name ?? "RareCouple"}</strong></p>
-        <p>Codigo: <strong className="font-mono text-foreground">{couple?.invite_code ?? "pendente"}</strong></p>
-        <p>Todos os lancamentos ficam padronizados para CSV e analises futuras.</p>
+        <p>C?digo: <strong className="font-mono text-foreground">{couple?.invite_code ?? "pendente"}</strong></p>
+        <p>Todos os lançamentos ficam padronizados para CSV e análises futuras.</p>
       </div>
     </Panel>
   );
@@ -1969,7 +1975,7 @@ function typeLabel(value: string) {
     expense: "Despesa",
     income: "Receita",
     investment: "Investimento",
-    transfer: "Transferencia",
+    transfer: "Transferência",
   };
   return labels[value] ?? value;
 }

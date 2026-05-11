@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "RareCouple",
-  description: "Financas compartilhadas com clareza diaria.",
+  description: "Finanças compartilhadas com clareza diária.",
 };
 
 export default function RootLayout({

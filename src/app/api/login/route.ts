@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   const profile = appProfiles.find((item) => item.email === email);
 
   if (!profile || body.password !== appPassword) {
-    return NextResponse.json({ message: "Usuario ou senha invalidos." }, { status: 401 });
+    return NextResponse.json({ message: "Usuário ou senha inválidos." }, { status: 401 });
   }
 
   const response = NextResponse.json({ ok: true });

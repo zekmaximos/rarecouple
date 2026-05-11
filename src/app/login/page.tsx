@@ -29,7 +29,7 @@ export default function LoginPage() {
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!allowedEmails.has(normalizedEmail)) {
-      setMessage("Este app e exclusivo para Samuel e Stephanie.");
+      setMessage("Este app é exclusivo para Samuel e Stephanie.");
       setLoading(false);
       return;
     }
@@ -42,7 +42,7 @@ export default function LoginPage() {
 
     if (!result.ok) {
       const data = (await result.json()) as { message?: string };
-      setMessage(data.message ?? "Usuario ou senha invalidos.");
+      setMessage(data.message ?? "Usuário ou senha inválidos.");
       setLoading(false);
       return;
     }
@@ -72,7 +72,7 @@ export default function LoginPage() {
           </div>
           <div>
             <p className="font-semibold">RareCouple</p>
-            <p className="text-sm text-white/75">Financas do casal</p>
+            <p className="text-sm text-white/75">Finanças do casal</p>
           </div>
         </div>
         <div className="relative z-10 max-w-xl py-12">
@@ -83,8 +83,8 @@ export default function LoginPage() {
             Uma rotina financeira para duas pessoas decidirem melhor.
           </h1>
           <p className="mt-6 max-w-lg text-lg leading-8 text-white/76">
-            Lancamentos rapidos, despesas fixas, parcelas, dashboard e CSV
-            padronizado desde a primeira versao.
+            Lançamentos rápidos, despesas fixas, parcelas, dashboard e CSV
+            padronizado desde a primeira versão.
           </p>
         </div>
         <div className="relative z-10 grid gap-4">

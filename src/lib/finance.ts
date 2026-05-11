@@ -64,11 +64,11 @@ export const categories = [
   "Mercado",
   "Restaurantes",
   "Transporte",
-  "Saude",
+  "Saúde",
   "Lazer",
-  "Educacao",
+  "Educação",
   "Assinaturas",
-  "Cartao",
+  "Cartão",
   "Investimentos",
   "Receita",
   "Outros",
@@ -76,11 +76,11 @@ export const categories = [
 
 export const paymentMethods = [
   "Pix",
-  "Debito",
-  "Credito",
+  "Débito",
+  "Crédito",
   "Dinheiro",
   "Boleto",
-  "Transferencia",
+  "Transferência",
 ];
 
 export function money(value: number) {

@@ -25,7 +25,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 NEXT_PUBLIC_SITE_URL=https://rarecouple.vercel.app
 ```
 
-O projeto tambem inclui `src/proxy.ts` para manter a sessao Supabase atualizada em rotas Next.js 16.
+O projeto também inclui `src/proxy.ts` para manter a sessao Supabase atualizada em rotas Next.js 16.
 
 ## Supabase
 
@@ -37,27 +37,27 @@ O projeto tambem inclui `src/proxy.ts` para manter a sessao Supabase atualizada 
 6. Execute `supabase/migrations/004_internal_login_shared_household.sql`.
 7. Execute `supabase/migrations/005_remove_couple_members_recursion.sql`.
 8. O login do app e interno: `samuel.morais@rarecouple.com` e `stephanie.carvalho@rarecouple.com`.
-9. Copie `Project URL` e `Publishable key` para `.env.local` e para as variaveis da Vercel.
+9. Copie `Project URL` e `Publishable key` para `.env.local` e para as variáveis da Vercel.
 
-Para uso exclusivo do casal, o app usa sessao HTTP-only propria e senha compartilhada. Os emails sao identificadores internos, nao caixas reais.
+Para uso exclusivo do casal, o app usa sessao HTTP-only propria e senha compartilhada. Os emails sao identificadores internos, não caixas reais.
 
-A migration 002 tambem ativa Realtime para lancamentos, metas, bens e feira.
+A migration 002 também ativa Realtime para lançamentos, metas, bens e feira.
 
-O schema usa uma conta compartilhada (`couples`), membros (`couple_members`) e lancamentos (`transactions`). Todas as tabelas publicas estao com RLS ativo.
+O schema usa uma conta compartilhada (`couples`), membros (`couple_members`) e lançamentos (`transactions`). Todas as tabelas públicas estão com RLS ativo.
 
 ## Vercel + Git
 
-Depois de criar o repositorio remoto:
+Depois de criar o repositório remoto:
 
 ```bash
 git remote add origin <url-do-repositorio>
 git push -u origin main
 ```
 
-Na Vercel, importe o repositorio e configure as mesmas variaveis de ambiente. Cada push para `main` fara um novo deploy de producao.
+Na Vercel, importe o repositório e configure as mesmas variáveis de ambiente. Cada push para `main` fará um novo deploy de produção.
 
 ## CSV
 
 O botao CSV baixa um arquivo com colunas fixas:
 
-`id,data,tipo,descricao,categoria,valor,metodo_pagamento,parcela_atual,parcelas_total,despesa_fixa,recorrente,observacoes,valor_assinado,criado_em`
+`id,data,tipo,descrição,categoria,valor,metodo_pagamento,parcela_atual,parcelas_total,despesa_fixa,recorrente,observações,valor_assinado,criado_em`
