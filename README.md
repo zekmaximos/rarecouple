@@ -24,6 +24,8 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 ```
 
+O projeto tambem inclui `src/proxy.ts` para manter a sessao Supabase atualizada em rotas Next.js 16.
+
 ## Supabase
 
 1. Crie um projeto no Supabase.
@@ -50,4 +52,3 @@ Na Vercel, importe o repositorio e configure as mesmas variaveis de ambiente. Ca
 O botao CSV baixa um arquivo com colunas fixas:
 
 `id,data,tipo,descricao,categoria,valor,metodo_pagamento,parcela_atual,parcelas_total,despesa_fixa,recorrente,observacoes,valor_assinado,criado_em`
-
